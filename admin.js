@@ -1494,7 +1494,7 @@ async function exportStudentCard(s) {
         ['Khai giang', startDate],
         ['Ket thuc', endDate],
         ['SDT', s.phone||'—'],
-        ['Link dang nhap', 'https://trancuongg12112008-dev.github.io/duyhoangdaytaon/index.html'],
+        ['Link dang nhap', 'https://trcuongdve.github.io/duyhoangdaytoanct/'],
       ].map(([label, val]) => `
         <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:10px;padding:.6rem .9rem;border:1px solid #e0e7ff">
           <span style="font-size:.78rem;color:#64748b;font-weight:600">${label}</span>

@@ -973,27 +973,39 @@ db.channel('maintenance-watch')
     filter: 'key=eq.maintenance'
   }, async (payload) => {
     const val = payload.new?.value;
-    if (val === 'true') {
-      if (typeof _wmDestroyed !== 'undefined') _wmDestroyed = true;
-      await setOffline();
-      sessionStorage.clear();
-      // Hiện màn hình bảo trì ngay, không reload
-      document.body.style.cssText = 'margin:0;padding:0;overflow:hidden';
-      document.body.innerHTML = `
-        <div style="min-height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e1b4b,#312e81);padding:2rem;box-sizing:border-box">
-          <div style="background:#fff;border-radius:20px;padding:2.5rem 2rem;text-align:center;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3)">
-            <img src="btht.png" alt="Bảo trì" style="width:100%;border-radius:12px;margin-bottom:1.25rem"/>
-            <div style="font-size:1.3rem;font-weight:800;color:#1e1b4b;margin-bottom:.75rem">Hệ thống đang bảo trì</div>
-            <div style="font-size:.9rem;color:#64748b;line-height:1.7;margin-bottom:1.5rem">
-              Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn.<br/>
-              Vui lòng quay lại sau ít phút.
-            </div>
-            <div style="font-size:.82rem;color:#94a3b8">Liên hệ trợ lý nếu cần hỗ trợ gấp.</div>
-          </div>
-        </div>`;
-    }
+    if (val === 'true') _showMaintenanceScreen();
   })
   .subscribe();
+
+// Polling backup mỗi 10 giây — đảm bảo hoạt động dù Realtime chưa bật
+let _maintenanceShown = false;
+function _showMaintenanceScreen() {
+  if (_maintenanceShown) return;
+  _maintenanceShown = true;
+  if (typeof _wmDestroyed !== 'undefined') _wmDestroyed = true;
+  setOffline().catch(()=>{});
+  sessionStorage.clear();
+  document.body.style.cssText = 'margin:0;padding:0;overflow:hidden';
+  document.body.innerHTML = `
+    <div style="min-height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e1b4b,#312e81);padding:2rem;box-sizing:border-box">
+      <div style="background:#fff;border-radius:20px;padding:2.5rem 2rem;text-align:center;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3)">
+        <img src="btht.png" alt="Bảo trì" style="width:100%;border-radius:12px;margin-bottom:1.25rem"/>
+        <div style="font-size:1.3rem;font-weight:800;color:#1e1b4b;margin-bottom:.75rem">Hệ thống đang bảo trì</div>
+        <div style="font-size:.9rem;color:#64748b;line-height:1.7;margin-bottom:1.5rem">
+          Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn.<br/>
+          Vui lòng quay lại sau ít phút.
+        </div>
+        <div style="font-size:.82rem;color:#94a3b8">Liên hệ trợ lý nếu cần hỗ trợ gấp.</div>
+      </div>
+    </div>`;
+}
+
+setInterval(async () => {
+  try {
+    const { data } = await db.from('app_settings').select('value').eq('key', 'maintenance').maybeSingle();
+    if (data?.value === 'true') _showMaintenanceScreen();
+  } catch(e) {}
+}, 10000);
 
 // Realtime: lắng nghe thông báo mới từ admin
 // ============================================================
