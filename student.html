@@ -611,9 +611,10 @@
 
     // ── Phát hiện DevTools — window size detection ──
     let _dtOpen = false;
+    let _dtPaused = false; // tạm tắt khi modal đang mở
 
     function _onDevToolsOpen() {
-      if (_dtOpen) return;
+      if (_dtOpen || _dtPaused) return;
       _dtOpen = true;
       document.body.style.filter = 'brightness(0)';
       document.body.style.pointerEvents = 'none';
@@ -621,30 +622,22 @@
     }
     function _onDevToolsClosed() {
       _dtOpen = false;
-      document.body.style.filter = '';
-      document.body.style.pointerEvents = '';
+      if (!_dtPaused) {
+        document.body.style.filter = '';
+        document.body.style.pointerEvents = '';
+      }
     }
 
-    // Window size — phát hiện khi dock side/bottom
     // Chỉ check trên desktop, bỏ qua mobile
     if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       setInterval(() => {
+        if (_dtPaused) return;
         const w = window.outerWidth  - window.innerWidth;
         const h = window.outerHeight - window.innerHeight;
         if (w > 200 || h > 200) _onDevToolsOpen();
         else _onDevToolsClosed();
       }, 1000);
     }
-
-    // Resize event — phát hiện khi undock/dock
-    let _lastInner = window.innerWidth;
-    window.addEventListener('resize', () => {
-      const diff = Math.abs(window.innerWidth - _lastInner);
-      if (diff > 0 && diff < 200 && (window.outerWidth - window.innerWidth) > 100) {
-        _onDevToolsOpen();
-      }
-      _lastInner = window.innerWidth;
-    });
 
     // ── Chặn quay màn hình ──
     if (navigator.mediaDevices?.getDisplayMedia) {

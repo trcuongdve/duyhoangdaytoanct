@@ -868,6 +868,8 @@ function openViewer(title, url, fileName, fileType) {
     body.innerHTML = '<p class="muted-center">⚠️ Không xem trực tiếp được. Vui lòng tải xuống.</p>';
   }
   document.getElementById('viewerModal').classList.add('open');
+  // Tạm tắt DevTools detection khi modal mở
+  if (typeof _dtPaused !== 'undefined') _dtPaused = true;
   // Hiện nút xoay trên mobile
   const rotateBtn = document.getElementById('viewerRotateBtn');
   if (rotateBtn) {
@@ -884,6 +886,13 @@ function closeViewer() {
   document.getElementById('viewerRotateBtn').style.display = 'none';
   _viewerRotated = false;
   if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  // Resume DevTools detection
+  if (typeof _dtPaused !== 'undefined') {
+    _dtPaused = false;
+    if (typeof _dtOpen !== 'undefined') _dtOpen = false;
+    document.body.style.filter = '';
+    document.body.style.pointerEvents = '';
+  }
 }
 
 // Xoay viewer
