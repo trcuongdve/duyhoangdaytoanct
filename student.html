@@ -564,8 +564,11 @@
     document.addEventListener('keydown', e => {
       const k = e.key;
       const ctrl = e.ctrlKey || e.metaKey;
-      const shift = e.shiftKey;
       const alt = e.altKey;
+      const inInput = ['INPUT','TEXTAREA'].includes(e.target.tagName);
+
+      // Cho phép Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X trong input/textarea
+      if (ctrl && inInput && ['a','A','c','C','v','V','x','X'].includes(k)) return;
 
       // Chặn tất cả Ctrl+* và Meta+*
       if (ctrl) {

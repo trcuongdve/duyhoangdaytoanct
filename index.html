@@ -646,8 +646,11 @@
     document.addEventListener('keydown', e => {
       const ctrl = e.ctrlKey || e.metaKey;
       const k = e.key;
+      const inInput = ['INPUT','TEXTAREA'].includes(e.target.tagName);
       const allowed = ['Tab','Enter','Backspace','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Delete'];
       if (allowed.includes(k)) return;
+      // Cho phép Ctrl+A, Ctrl+V trong input
+      if (ctrl && inInput && ['a','A','v','V'].includes(k)) return;
       if (ctrl) { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (e.altKey && k !== 'Alt') { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (/^F\d+$/.test(k)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
