@@ -601,13 +601,24 @@
 
     // ── Ẩn nội dung khi chuyển tab / minimize ──
     document.addEventListener('visibilitychange', () => {
+      if (_dtPaused) return; // đang xem video/tài liệu — bỏ qua
       if (document.hidden) {
         document.body.style.filter = 'brightness(0)';
-        showOverlay('Chuyển tab / ẩn cửa sổ khi đang học');
       } else {
         document.body.style.filter = '';
       }
     });
+
+    // ── Ẩn khi mất focus (Alt+Tab desktop) — chỉ desktop ──
+    if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      window.addEventListener('blur', () => {
+        if (_dtPaused) return;
+        document.body.style.filter = 'brightness(0)';
+      });
+      window.addEventListener('focus', () => {
+        document.body.style.filter = '';
+      });
+    }
 
     // ── Phát hiện DevTools — window size detection ──
     let _dtOpen = false;
@@ -788,14 +799,6 @@
         e.preventDefault();
       }
     }, true);
-
-    // ── Phát hiện mất focus cửa sổ (Alt+Tab) ──
-    window.addEventListener('blur', () => {
-      document.body.style.filter = 'brightness(0)';
-    });
-    window.addEventListener('focus', () => {
-      document.body.style.filter = '';
-    });
 
     // ── Bảo vệ Object.defineProperty — chặn override prototype ──
     (function() {
