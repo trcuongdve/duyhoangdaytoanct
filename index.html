@@ -685,11 +685,14 @@
       document.body.style.filter = '';
       document.body.style.pointerEvents = '';
     }
-    setInterval(() => {
-      const w = window.outerWidth  - window.innerWidth;
-      const h = window.outerHeight - window.innerHeight;
-      if (w > 100 || h > 100) _onDTOpen(); else _onDTClose();
-    }, 1000);
+    // Chỉ check trên desktop, bỏ qua mobile (thanh địa chỉ làm false positive)
+    if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      setInterval(() => {
+        const w = window.outerWidth  - window.innerWidth;
+        const h = window.outerHeight - window.innerHeight;
+        if (w > 200 || h > 200) _onDTOpen(); else _onDTClose();
+      }, 1000);
+    }
 
     // Chặn console
     (function() {

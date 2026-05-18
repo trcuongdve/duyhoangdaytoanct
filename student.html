@@ -626,12 +626,15 @@
     }
 
     // Window size — phát hiện khi dock side/bottom
-    setInterval(() => {
-      const w = window.outerWidth  - window.innerWidth;
-      const h = window.outerHeight - window.innerHeight;
-      if (w > 100 || h > 100) _onDevToolsOpen();
-      else _onDevToolsClosed();
-    }, 1000);
+    // Chỉ check trên desktop, bỏ qua mobile
+    if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      setInterval(() => {
+        const w = window.outerWidth  - window.innerWidth;
+        const h = window.outerHeight - window.innerHeight;
+        if (w > 200 || h > 200) _onDevToolsOpen();
+        else _onDevToolsClosed();
+      }, 1000);
+    }
 
     // Resize event — phát hiện khi undock/dock
     let _lastInner = window.innerWidth;
