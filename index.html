@@ -185,7 +185,10 @@
             <label style="font-size:.75rem;font-weight:700;color:#6366f1;letter-spacing:.5px;text-transform:uppercase">Mật khẩu</label>
             <div style="display:flex;align-items:center;background:#f8faff;border:1.5px solid #e0e7ff;border-radius:14px;overflow:hidden;transition:all .2s" onfocusin="this.style.borderColor='#6366f1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'" onfocusout="this.style.borderColor='#e0e7ff';this.style.boxShadow='none'">
               <span style="padding:0 .9rem;font-size:1rem;color:#94a3b8">🔑</span>
-              <input type="password" id="passwordInput" placeholder="Nhập mật khẩu" required style="flex:1;border:none;outline:none;padding:.8rem .75rem .8rem 0;background:transparent;font-size:.92rem;color:#0f172a"/>
+              <input type="password" id="passwordInput" placeholder="Nhập mật khẩu" required style="flex:1;border:none;outline:none;padding:.8rem .75rem .8rem 0;background:transparent;font-size:.95rem;color:#0f172a;font-family:'Courier New',Courier,monospace;letter-spacing:.05em"/>
+            </div>
+            <div style="font-size:.72rem;color:#94a3b8;margin-top:.3rem;line-height:1.6">
+              ⚠️ Chú ý phân biệt: chữ <b style="color:#6366f1">i</b> thường (i) và chữ <b style="color:#6366f1">L</b> hoa (L) — số <b style="color:#6366f1">1</b> (một) và chữ <b style="color:#6366f1">l</b> thường (l) — số <b style="color:#6366f1">0</b> (không) và chữ <b style="color:#6366f1">O</b> hoa (O)
             </div>
           </div>
 
@@ -585,6 +588,7 @@
           sessionStorage.setItem('dh_user', u);
           sessionStorage.setItem('dh_name', student.full_name);
           sessionStorage.setItem('dh_token', token);
+          sessionStorage.setItem('dh_code', student.student_code || u);
 
           // Parse thông tin thiết bị
           const ua = navigator.userAgent;

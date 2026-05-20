@@ -815,20 +815,19 @@ document.getElementById('csClassSelect').addEventListener('change', async () => 
 async function genStudentCode() {
   const { data: existing } = await db.from('students').select('student_code');
   const usedCodes = new Set((existing||[]).map(s => s.student_code).filter(Boolean));
-  const upper  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const lower  = 'abcdefghijklmnopqrstuvwxyz';
-  const digits = '0123456789';
+  // Loại bỏ ký tự dễ nhầm: i, l, I, O, o, 0, 1
+  const upper  = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lower  = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
   const all    = upper + lower + digits;
   let code;
   do {
-    // Đảm bảo có ít nhất 1 chữ hoa, 1 chữ thường, 1 số trong 6 ký tự
     const arr = [
       upper[Math.floor(Math.random() * upper.length)],
       lower[Math.floor(Math.random() * lower.length)],
       digits[Math.floor(Math.random() * digits.length)],
       ...Array.from({length: 2}, () => all[Math.floor(Math.random() * all.length)])
     ];
-    // Xáo trộn
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -881,7 +880,7 @@ document.getElementById('csSaveBtn').addEventListener('click', async () => {
     document.getElementById('naName').textContent     = name;
     document.getElementById('naCode').textContent     = document.getElementById('csCode').value.trim() || '—';
     document.getElementById('naUsername').textContent = username;
-    document.getElementById('naPassword').textContent = password;
+    setPasswordDisplay(password);
     document.getElementById('naClass').textContent    = `${existingClasses}, ${cls}`.replace(/^,\s*/, '');
     document.getElementById('naPhone').textContent    = phone || '';
     document.getElementById('naStartDate').textContent = '—';
@@ -928,7 +927,7 @@ document.getElementById('csSaveBtn').addEventListener('click', async () => {
   document.getElementById('naName').textContent     = name;
   document.getElementById('naCode').textContent     = document.getElementById('csCode').value.trim() || '—';
   document.getElementById('naUsername').textContent = username;
-  document.getElementById('naPassword').textContent = password;
+  setPasswordDisplay(password);
   document.getElementById('naClass').textContent    = cls || '';
   document.getElementById('naPhone').textContent    = phone || '';
 
@@ -987,7 +986,13 @@ document.getElementById('naCopyBtn').addEventListener('click', () => {
   const phone = document.getElementById('naPhone').textContent;
   const start = document.getElementById('naStartDate').textContent;
   const end   = document.getElementById('naEndDate').textContent;
-  const text  = `Họ tên: ${name}\nMã HV: ${code}\nGmail: ${user}\nMật khẩu: ${pw}\nLớp: ${cls}\nNgày khai giảng: ${start}\nNgày kết thúc: ${end}\nSĐT: ${phone}\n\n👉 Bạn sao chép mật khẩu trên rồi dán vào chỗ mật khẩu trong web nha.\n🌐 Link học: https://trcuongdve.github.io/duyhoangdaytoanct/\nNếu gặp vấn đề kỹ thuật hay gì cứ liên hệ mình nha.`;
+  const spelled = pw.split('').map(c => {
+    if (c >= 'A' && c <= 'Z') return `${c} hoa`;
+    if (c >= 'a' && c <= 'z') return `${c} thường`;
+    if (c >= '0' && c <= '9') return `số ${c}`;
+    return c;
+  }).join(' - ');
+  const text  = `Họ tên: ${name}\nMã HV: ${code}\nGmail: ${user}\nMật khẩu: ${pw}\n📖 Đọc: ${spelled}\nLớp: ${cls}\nNgày khai giảng: ${start}\nNgày kết thúc: ${end}\nSĐT: ${phone}\n\n👉 Bạn sao chép mật khẩu trên rồi dán vào chỗ mật khẩu trong web nha.\n🌐 Link học: https://trcuongdve.github.io/duyhoangdaytoanct/\nNếu gặp vấn đề kỹ thuật hay gì cứ liên hệ mình nha.`;
   navigator.clipboard?.writeText(text).then(() => {
     const btn = document.getElementById('naCopyBtn');
     btn.textContent = '✅ Đã sao chép!';
@@ -1632,7 +1637,20 @@ document.getElementById('pwSaveBtn').addEventListener('click', async () => {
 // ============================================================
 // VIEWER MODAL
 // ============================================================
-// Helper: chuyển link thường thành embed URL
+// Helper: đọc mật khẩu bằng chữ
+function spellPassword(pw) {
+  return pw.split('').map(c => {
+    if (c >= 'A' && c <= 'Z') return `${c} (${c} hoa)`;
+    if (c >= 'a' && c <= 'z') return `${c} (${c} thường)`;
+    if (c >= '0' && c <= '9') return `${c} (số ${c})`;
+    return c;
+  }).join(' – ');
+}
+function setPasswordDisplay(pw) {
+  document.getElementById('naPassword').textContent = pw;
+  const spelled = document.getElementById('naPasswordSpelled');
+  if (spelled) spelled.textContent = '📖 Đọc: ' + spellPassword(pw);
+}
 function getEmbedUrl(url) {
   if (!url) return null;
   // YouTube

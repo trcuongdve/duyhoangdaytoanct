@@ -4,24 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Học Sinh - DHDTCT LMS v1.3.0</title>
-  <!-- Content Security Policy — chặn inject script từ domain lạ -->
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com;
-    media-src 'self' blob: https://*.supabase.co https://drive.google.com https://www.youtube.com;
-    frame-src https://drive.google.com https://www.youtube.com https://docs.google.com;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co;
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'none';
-  "/>
   <meta http-equiv="X-Frame-Options" content="DENY"/>
-  <meta http-equiv="X-Content-Type-Options" content="nosniff"/>
-  <meta http-equiv="Referrer-Policy" content="no-referrer"/>
   <link rel="icon" type="image/png" href="icons/icon-192.png"/>
   <link rel="apple-touch-icon" href="icons/icon-192.png"/>
   <link rel="stylesheet" href="style.css"/>
@@ -912,7 +895,7 @@
     // ══════════════════════════════════════════════════
     // WATERMARK BẢO MẬT CẤP CAO NHẤT
     // ══════════════════════════════════════════════════
-    const wmText = sessionStorage.getItem('dh_user') || '';
+    const wmText = sessionStorage.getItem('dh_code') || sessionStorage.getItem('dh_user') || '';
     let _wmEl = null;
     let _wmDestroyed = false;
     let _wmTamperCount = 0;
@@ -1036,45 +1019,6 @@
       }
     });
     _wmObserver.observe(document.body, { childList: true, subtree: false });
-
-    // LỚP 3: Shadow DOM clone — watermark thứ 2 trong Shadow DOM (không thể xóa từ ngoài)
-    try {
-      const _shadowHost = document.createElement('div');
-      _shadowHost.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2147483646;';
-      document.body.appendChild(_shadowHost);
-      const _shadow = _shadowHost.attachShadow({ mode: 'closed' });
-      const _shadowCanvas = document.createElement('canvas');
-      _shadowCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
-      _shadow.appendChild(_shadowCanvas);
-      function _drawShadowWm() {
-        _shadowCanvas.width  = window.innerWidth;
-        _shadowCanvas.height = window.innerHeight;
-        const ctx = _shadowCanvas.getContext('2d');
-        ctx.clearRect(0, 0, _shadowCanvas.width, _shadowCanvas.height);
-        ctx.save();
-        ctx.translate(_shadowCanvas.width/2, _shadowCanvas.height/2);
-        ctx.rotate(-25 * Math.PI / 180);
-        ctx.font = 'bold 15px Arial';
-        ctx.fillStyle = 'rgba(0,0,0,0.07)';
-        ctx.textAlign = 'center';
-        const gapX = 220, gapY = 70;
-        const cols = Math.ceil(_shadowCanvas.width  * 1.5 / gapX) + 2;
-        const rows = Math.ceil(_shadowCanvas.height * 1.5 / gapY) + 2;
-        for (let r = -rows; r <= rows; r++)
-          for (let c = -cols; c <= cols; c++)
-            ctx.fillText(wmText, c * gapX, r * gapY);
-        ctx.restore();
-      }
-      _drawShadowWm();
-      window.addEventListener('resize', _drawShadowWm);
-    } catch(e) {}
-
-    // LỚP 4: CSS ::after pseudo-element watermark (không thể xóa qua JS)
-    (function() {
-      const s = document.createElement('style');
-      s.textContent = `body::after{content:"${wmText.replace(/"/g,'')} ${wmText.replace(/"/g,'')} ${wmText.replace(/"/g,'')}";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:14px;color:rgba(0,0,0,0.06);white-space:nowrap;pointer-events:none;z-index:2147483645;letter-spacing:80px;word-spacing:80px;width:300vw;text-align:center;}`;
-      document.head.appendChild(s);
-    })();
 
     // ── CSS bảo vệ ──
     const secStyle = document.createElement('style');

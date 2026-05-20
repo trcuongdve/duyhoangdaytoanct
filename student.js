@@ -1192,7 +1192,32 @@ setInterval(async () => {
   const { data } = await db.from('students').select('session_token, active, class_name, expiry_date, manually_unlocked').eq('username', currentUser).single();
   if (!data) return;
 
-  // Bị đăng nhập thiết bị khác — bỏ kiểm tra
+  // Bị đăng nhập thiết bị khác — token không khớp → đăng xuất
+  if (data.session_token && data.session_token !== token) {
+    await setOffline();
+    sessionStorage.clear();
+    document.body.innerHTML = `
+      <div style="position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;text-align:center;padding:2rem;z-index:99999">
+        <div style="font-size:3.5rem">📱</div>
+        <div style="color:#f59e0b;font-size:1.2rem;font-weight:800">Đăng nhập từ thiết bị khác</div>
+        <div style="color:rgba(255,255,255,.75);font-size:.92rem;max-width:320px;line-height:1.7">
+          Tài khoản vừa được đăng nhập từ một thiết bị khác.<br/>
+          Phiên này đã bị đăng xuất tự động.
+        </div>
+        <div id="_devCountdown" style="color:rgba(255,255,255,.5);font-size:.85rem">Tự động chuyển về đăng nhập sau <b style="color:#fff">3</b> giây...</div>
+        <button onclick="location.href='index.html'" style="background:#6366f1;color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer">
+          Đăng nhập lại
+        </button>
+      </div>`;
+    let _c = 3;
+    const _t = setInterval(() => {
+      _c--;
+      const el = document.getElementById('_devCountdown');
+      if (el) el.innerHTML = `Tự động chuyển về đăng nhập sau <b style="color:#fff">${_c}</b> giây...`;
+      if (_c <= 0) { clearInterval(_t); location.href = 'index.html'; }
+    }, 1000);
+    return;
+  }
 
   // Tài khoản bị khóa thủ công
   if (!data.active) {
