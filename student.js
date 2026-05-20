@@ -225,13 +225,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Heartbeat mỗi 20s để giữ trạng thái online
+// Heartbeat + kiểm tra bảo trì gộp vào 1 interval 60s
 db.from('students').update({ is_online: true, last_seen: new Date().toISOString() }).eq('username', currentUser);
-setInterval(() => {
-  if (document.visibilityState !== 'hidden') {
+setInterval(async () => {
+  if (document.visibilityState === 'hidden') return;
+  try {
+    // Heartbeat online
     db.from('students').update({ is_online: true, last_seen: new Date().toISOString() }).eq('username', currentUser);
-  }
-}, 20000);
+    // Kiểm tra bảo trì
+    const { data: mt } = await db.from('app_settings').select('value').eq('key', 'maintenance').maybeSingle();
+    if (mt?.value === 'true') _showMaintenanceScreen();
+  } catch(e) {}
+}, 60000);
 document.getElementById('menuToggle').addEventListener('click', () => {
   const isMobile = window.innerWidth <= 768;
   if (isMobile) {
@@ -1009,13 +1014,6 @@ function _showMaintenanceScreen() {
     </div>`;
 }
 
-setInterval(async () => {
-  try {
-    const { data } = await db.from('app_settings').select('value').eq('key', 'maintenance').maybeSingle();
-    if (data?.value === 'true') _showMaintenanceScreen();
-  } catch(e) {}
-}, 10000);
-
 // Realtime: lắng nghe thông báo mới từ admin
 // ============================================================
 // THÔNG BÁO RIÊNG
@@ -1186,7 +1184,7 @@ async function showAnnouncementToast(ann = null) {
   setTimeout(dismissToast, 8000);
 }
 
-// Kiểm tra session token + trạng thái tài khoản mỗi 30 giây
+// Kiểm tra session token + trạng thái tài khoản mỗi 2 phút
 setInterval(async () => {
   const token = sessionStorage.getItem('dh_token');
   if (!token) return;
@@ -1234,7 +1232,7 @@ setInterval(async () => {
       return;
     }
   }
-}, 30000);
+}, 120000);
 
 
 

@@ -875,19 +875,6 @@
       document.documentElement.mozRequestFullScreen = _blockFullscreen;
     } catch(e) {}
 
-    // LỚP 5: Token xác thực session mỗi 5 phút — tự logout nếu session hết hạn
-    setInterval(async () => {
-      const user = sessionStorage.getItem('dh_user');
-      if (!user) { location.href = 'index.html'; return; }
-      try {
-        const { data } = await _db.from('students').select('active').eq('username', user).maybeSingle();
-        if (!data || data.active === false) {
-          sessionStorage.clear();
-          location.href = 'index.html';
-        }
-      } catch(e) {}
-    }, 5 * 60 * 1000);
-
     // LỚP 6: Chặn Service Worker bên ngoài inject script
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
