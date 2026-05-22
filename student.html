@@ -564,11 +564,16 @@
         e.preventDefault(); e.stopImmediatePropagation();
         return;
       }
-      // Chặn tất cả F-keys
+      // Chặn tất cả F-keys — ngoại trừ phím F (chữ thường/hoa) khi đang xem video để fullscreen
       if (/^F\d+$/.test(k)) {
+        // F1–F12 vẫn bị chặn
         e.preventDefault(); e.stopImmediatePropagation();
         showOverlay('Phím bị chặn: ' + k);
         return;
+      }
+      // Phím F (chữ) khi viewer đang mở → cho qua để student.js xử lý fullscreen
+      if ((k === 'f' || k === 'F') && document.getElementById('viewerModal')?.classList.contains('open')) {
+        return; // không chặn — student.js sẽ bắt và fullscreen iframe
       }
       // Chặn PrintScreen, Insert, Delete đặc biệt
       if (['PrintScreen','F13','ScrollLock','Pause'].includes(k)) {
@@ -587,7 +592,7 @@
 
     // ── Ẩn nội dung khi chuyển tab / minimize ──
     document.addEventListener('visibilitychange', () => {
-      if (_dtPaused) return; // đang xem video/tài liệu — bỏ qua
+      if (_dtPaused) return; // đang xem video/tài liệu — bỏ qua (student.js xử lý riêng)
       if (document.hidden) {
         document.body.style.filter = 'brightness(0)';
       } else {
@@ -895,7 +900,7 @@
     // ══════════════════════════════════════════════════
     // WATERMARK BẢO MẬT CẤP CAO NHẤT
     // ══════════════════════════════════════════════════
-    const wmText = sessionStorage.getItem('dh_code') || sessionStorage.getItem('dh_user') || '';
+    const wmText = sessionStorage.getItem('dh_user') || '';
     let _wmEl = null;
     let _wmDestroyed = false;
     let _wmTamperCount = 0;
@@ -1039,6 +1044,12 @@
         video::-webkit-media-controls-fullscreen-button { display:none !important; }
       }
       @media print { body { display:none !important; } }
+      /* Chặn kéo thả ảnh/video */
+      img, video { -webkit-user-drag: none !important; user-drag: none !important; }
+      /* Overlay chặn chuột phải trên iframe */
+      .iframe-protect { position:absolute; inset:0; z-index:5; pointer-events:none; }
+      /* Tab warning overlay */
+      #_tabWarnOverlay { z-index:2147483646 !important; }
     `;
     document.head.appendChild(secStyle);
   </script>

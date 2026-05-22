@@ -578,10 +578,13 @@
           const token = Math.random().toString(36).slice(2) + Date.now();
           const updatePayload = { session_token: token, login_attempts: 0, last_login: now.toISOString(), is_online: true, last_seen: now.toISOString() };
           if (isPlainMatch || isHashRawMatch) updatePayload.password = await hashPw(p);
+
+          // Ghi token mới vào DB — thiết bị cũ sẽ nhận Realtime event và tự đăng xuất ngay
           await db.from('students').update(updatePayload).eq('id', student.id);
 
-          if (student.session_token) {
-            await db.from('alerts').insert({ username: u, student_name: student.full_name, class_name: student.class_name||'', reason: 'Đăng nhập thiết bị mới — thiết bị cũ bị đăng xuất' });
+          const hadOldSession = !!student.session_token;
+          if (hadOldSession) {
+            await db.from('alerts').insert({ username: u, student_name: student.full_name, class_name: student.class_name||'', reason: 'Đăng nhập thiết bị mới — thiết bị cũ bị đăng xuất tức thì' });
           }
 
           sessionStorage.setItem('dh_role', 'student');
@@ -607,7 +610,16 @@
 
           try { db.from('login_logs').insert({ username: u, student_name: student.full_name, class_name: student.class_name||'', device_info: deviceInfo, browser, os, device_type: deviceType }).then(() => {}); } catch(e) {}
 
-          document.getElementById('monitorNotice').style.display = 'flex';
+          // Hiện thông báo đăng nhập thiết bị mới nếu có phiên cũ
+          const noticeEl = document.getElementById('monitorNotice');
+          if (hadOldSession) {
+            // Thêm dòng cảnh báo thiết bị cũ bị đăng xuất
+            const extra = document.createElement('div');
+            extra.style.cssText = 'margin-top:.5rem;font-size:.82rem;color:#f59e0b;font-weight:600';
+            extra.textContent = '⚠️ Thiết bị đang đăng nhập trước đó đã bị đăng xuất.';
+            noticeEl.appendChild(extra);
+          }
+          noticeEl.style.display = 'flex';
           setTimeout(() => { window.location.href = 'student.html'; }, 5000);
 
         } catch(err2) {
@@ -908,7 +920,5 @@
   </div>
 </body>
 </html>
-
-
 
 

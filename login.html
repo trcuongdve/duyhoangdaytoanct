@@ -196,6 +196,19 @@
         sessionStorage.setItem('dh_role', 'student');
         sessionStorage.setItem('dh_user', u);
         sessionStorage.setItem('dh_name', data.full_name);
+
+        // Tạo session token mới — thiết bị cũ sẽ bị đăng xuất tức thì qua Realtime
+        const token = Math.random().toString(36).slice(2) + Date.now();
+        await supabase.from('students').update({
+          session_token: token,
+          login_attempts: 0,
+          last_login: new Date().toISOString(),
+          is_online: true,
+          last_seen: new Date().toISOString()
+        }).eq('id', data.id);
+        sessionStorage.setItem('dh_token', token);
+        sessionStorage.setItem('dh_code', data.student_code || u);
+
         window.location.href = 'student.html';
       }
     });

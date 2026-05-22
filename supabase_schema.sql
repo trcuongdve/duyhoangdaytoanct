@@ -248,3 +248,14 @@ alter table login_logs add column if not exists device_type text default null;
 
 -- Migration: thêm cột is_embed vào lesson_videos
 alter table lesson_videos add column if not exists is_embed boolean default false;
+
+-- ============================================================
+-- BẮT BUỘC: Bật Realtime cho bảng students
+-- Cần chạy trong Supabase Dashboard > SQL Editor
+-- Để tính năng đăng xuất thiết bị cũ tức thì hoạt động
+-- ============================================================
+alter publication supabase_realtime add table students;
+
+-- Đảm bảo các bảng khác cũng được bật Realtime
+alter publication supabase_realtime add table announcements;
+alter publication supabase_realtime add table app_settings;

@@ -216,14 +216,7 @@ document.getElementById('logoutBtn').addEventListener('click', async e => {
 window.addEventListener('beforeunload', () => {
   db.from('students').update({ is_online: false, last_seen: new Date().toISOString() }).eq('username', currentUser);
 });
-// Mobile: ẩn tab cũng set offline
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    db.from('students').update({ is_online: false, last_seen: new Date().toISOString() }).eq('username', currentUser);
-  } else {
-    db.from('students').update({ is_online: true, last_seen: new Date().toISOString() }).eq('username', currentUser);
-  }
-});
+// Mobile: ẩn tab cũng set offline — xử lý trong block viewer bên dưới
 
 // Heartbeat + kiểm tra bảo trì gộp vào 1 interval 60s
 db.from('students').update({ is_online: true, last_seen: new Date().toISOString() }).eq('username', currentUser);
@@ -631,7 +624,8 @@ function renderLessonListFromCache() {
 function getEmbedUrl(url) {
   if (!url) return null;
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`;
+  // Dùng youtube-nocookie.com: không tracking, không cho click tên kênh mở tab mới
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0&modestbranding=1`;
   const gd = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (gd) return `https://drive.google.com/file/d/${gd[1]}/preview`;
   return null;
@@ -771,11 +765,67 @@ document.getElementById('sBackToLessonsBtn').addEventListener('click', () => {
 document.getElementById('sLessonSearch').addEventListener('input', debounce(renderLessonListFromCache, 200));
 
 // ---- Viewer ----
+// ── Biến theo dõi trạng thái viewer ──
+let _viewerActive = false;      // đang mở viewer
+let _viewerIsVideo = false;     // đang xem video (cần chặn chuyển tab)
+let _activeVideoEl = null;      // element <video> đang phát (nếu có)
+let _tabWarnShown = false;      // đã hiện cảnh báo chuyển tab chưa
+
+// ── Chặn chuyển tab khi đang xem video ──
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    db.from('students').update({ is_online: false, last_seen: new Date().toISOString() }).eq('username', currentUser);
+    // Nếu đang xem video → pause + hiện cảnh báo
+    if (_viewerActive && _viewerIsVideo) {
+      if (_activeVideoEl && !_activeVideoEl.paused) _activeVideoEl.pause();
+      _showTabWarning();
+    }
+  } else {
+    db.from('students').update({ is_online: true, last_seen: new Date().toISOString() }).eq('username', currentUser);
+    _hideTabWarning();
+  }
+});
+
+function _showTabWarning() {
+  if (_tabWarnShown) return;
+  _tabWarnShown = true;
+  let overlay = document.getElementById('_tabWarnOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = '_tabWarnOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.92);z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;text-align:center;padding:2rem;backdrop-filter:blur(6px)';
+    overlay.innerHTML = `
+      <div style="font-size:3rem">⚠️</div>
+      <div style="color:#f59e0b;font-size:1.15rem;font-weight:800">Video đã bị tạm dừng</div>
+      <div style="color:rgba(255,255,255,.8);font-size:.9rem;max-width:300px;line-height:1.7">
+        Bạn đã rời khỏi trang trong khi xem video.<br/>
+        Hành vi này đã được ghi lại.
+      </div>
+      <button id="_tabWarnBtn" style="background:#6366f1;color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:.5rem">
+        ▶ Tiếp tục xem
+      </button>`;
+    document.body.appendChild(overlay);
+    document.getElementById('_tabWarnBtn').addEventListener('click', _hideTabWarning);
+  }
+  overlay.style.display = 'flex';
+}
+
+function _hideTabWarning() {
+  _tabWarnShown = false;
+  const overlay = document.getElementById('_tabWarnOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 function openViewer(title, url, fileName, fileType) {
   const isVideo = fileType==='video'||(fileType||'').startsWith('video/');
   const isLink = fileType==='link';
   const isDocLink = fileType==='doc-link';
   const isHandwrittenLink = fileType==='handwritten-link';
+
+  _viewerActive = true;
+  _viewerIsVideo = isVideo || isLink;
+  _activeVideoEl = null;
+  _hideTabWarning();
 
   let displayTitle = title;
   if (isVideo || isLink) displayTitle = 'Video bài học';
@@ -812,12 +862,179 @@ function openViewer(title, url, fileName, fileType) {
       const iframeWrap = document.createElement('div');
       iframeWrap.style.cssText = 'position:relative;flex:1;min-height:0;overflow:hidden';
       const iframe = document.createElement('iframe');
+      iframe.id = '_ytIframe_' + Date.now();
       iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none';
       iframe.allowFullscreen = true;
+      iframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture');
       iframe.onload = hideLoading;
       iframeWrap.appendChild(iframe);
+
+      // ── Grid 3×3 overlay: chặn toàn bộ ngoại trừ ô giữa ──
+      // Ô giữa (center-gap) pointer-events:none → click xuyên qua để bấm Play
+      // 8 ô xung quanh pointer-events:auto → chặn logo YT, nút chia sẻ, thanh tiêu đề, tên kênh
+      const grid = document.createElement('div');
+      grid.style.cssText = [
+        'position:absolute;top:0;left:0;width:100%;height:100%;',
+        'display:grid;',
+        // Hàng trên: che thanh tiêu đề + tên kênh (48px)
+        // Hàng giữa: chừa vùng Play (120px)
+        // Hàng dưới: che thanh controls + tên video + tên kênh phía dưới (72px)
+        'grid-template-rows:48px 1fr 72px;',
+        // Cột trái: che logo/tên kênh trái (200px)
+        // Cột giữa: chừa nút Play
+        // Cột phải: che nút chia sẻ/xem trên YT (200px)
+        'grid-template-columns:200px 1fr 200px;',
+        'z-index:10;pointer-events:none;'
+      ].join('');
+
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        if (i === 4) {
+          // Ô chính giữa — cho phép click xuyên qua vào nút Play
+          cell.style.cssText = 'pointer-events:none;';
+        } else {
+          // 8 ô xung quanh — chặn click + chuột phải
+          cell.style.cssText = 'pointer-events:auto;background:transparent;';
+          cell.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+          // Chặn mọi click (không cho focus vào iframe vùng này)
+          cell.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+          cell.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+        }
+        grid.appendChild(cell);
+      }
+      iframeWrap.appendChild(grid);
+
+      // ── Phát hiện iframe mở tab mới (blur trick) ──
+      // Khi YouTube mở tab mới, window mất focus → blur event
+      // Đóng tab đó ngay bằng cách focus lại window
+      let _iframeFocused = false;
+      const _onIframeMouseEnter = () => { _iframeFocused = true; };
+      const _onIframeMouseLeave = () => { _iframeFocused = false; };
+      const _onWindowBlur = () => {
+        if (_iframeFocused && _viewerActive && _viewerIsVideo) {
+          // Window mất focus trong khi chuột đang trên iframe → có thể tab mới vừa mở
+          setTimeout(() => {
+            window.focus();
+            // Đóng tab mới nhất nếu có thể
+            try { window.open('', '_self'); } catch(e) {}
+          }, 0);
+        }
+      };
+      iframeWrap.addEventListener('mouseenter', _onIframeMouseEnter);
+      iframeWrap.addEventListener('mouseleave', _onIframeMouseLeave);
+      window.addEventListener('blur', _onWindowBlur);
+
+      // Chặn window.open toàn trang khi viewer đang mở
+      const _origOpen = window.open;
+      window._ytOpenBlocked = true;
+      window.open = function(...args) {
+        if (window._ytOpenBlocked) {
+          // Chặn hoàn toàn — không cho mở tab mới
+          return null;
+        }
+        return _origOpen.apply(window, args);
+      };
+
+      // ── Phím F → fullscreen iframe ──
+      const _onKeyF = (e) => {
+        if ((e.key === 'f' || e.key === 'F') && document.getElementById('viewerModal')?.classList.contains('open')) {
+          e.preventDefault(); e.stopImmediatePropagation();
+          if (iframe.requestFullscreen)            iframe.requestFullscreen();
+          else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+          else if (iframe.mozRequestFullScreen)    iframe.mozRequestFullScreen();
+          else if (iframe.msRequestFullscreen)     iframe.msRequestFullscreen();
+        }
+      };
+      document.addEventListener('keydown', _onKeyF, true);
+
+      // ── Overlay che tên kênh khi fullscreen ──
+      // Khi iframe fullscreen, trình duyệt đưa iframe lên trên tất cả —
+      // nhưng các element trong ::backdrop / pseudo-fullscreen vẫn render được
+      // nếu dùng :fullscreen selector trên iframe wrapper.
+      // Cách đáng tin cậy nhất: inject style vào <head> che góc trên-trái
+      // bằng ::before pseudo-element trên iframe khi nó ở trạng thái fullscreen.
+      const _fsStyleId = '_yt_fs_style_' + iframe.id;
+      const _fsStyle = document.createElement('style');
+      _fsStyle.id = _fsStyleId;
+      _fsStyle.textContent = `
+        /* Che tên kênh YT góc trên-trái khi fullscreen */
+        #${iframe.id}:-webkit-full-screen { outline: none; }
+        #${iframe.id}:-moz-full-screen    { outline: none; }
+        #${iframe.id}:fullscreen          { outline: none; }
+
+        /* Overlay cố định che góc trên-trái — hiện khi #_fs_topbar tồn tại */
+        #_fs_topbar {
+          position: fixed;
+          top: 0; left: 0;
+          width: 340px; height: 52px;
+          background: #000;
+          z-index: 2147483647;
+          pointer-events: none;
+        }
+        #_fs_topbar_right {
+          position: fixed;
+          top: 0; right: 0;
+          width: 220px; height: 52px;
+          background: #000;
+          z-index: 2147483647;
+          pointer-events: none;
+        }
+      `;
+      document.head.appendChild(_fsStyle);
+
+      // Tạo sẵn 2 thanh che (ẩn mặc định)
+      const _fsBar = document.createElement('div');
+      _fsBar.id = '_fs_topbar';
+      _fsBar.style.display = 'none';
+      document.body.appendChild(_fsBar);
+
+      const _fsBarR = document.createElement('div');
+      _fsBarR.id = '_fs_topbar_right';
+      _fsBarR.style.display = 'none';
+      document.body.appendChild(_fsBarR);
+
+      const _onFsChange = () => {
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+        if (fsEl === iframe) {
+          // Đang fullscreen iframe → hiện thanh che
+          _fsBar.style.display  = 'block';
+          _fsBarR.style.display = 'block';
+        } else {
+          // Thoát fullscreen → ẩn thanh che
+          _fsBar.style.display  = 'none';
+          _fsBarR.style.display = 'none';
+        }
+      };
+      document.addEventListener('fullscreenchange',       _onFsChange);
+      document.addEventListener('webkitfullscreenchange', _onFsChange);
+      document.addEventListener('mozfullscreenchange',    _onFsChange);
+
+      // Dọn tất cả khi đóng viewer
+      iframe._cleanupF = () => {
+        document.removeEventListener('keydown', _onKeyF, true);
+        document.removeEventListener('fullscreenchange',       _onFsChange);
+        document.removeEventListener('webkitfullscreenchange', _onFsChange);
+        document.removeEventListener('mozfullscreenchange',    _onFsChange);
+        iframeWrap.removeEventListener('mouseenter', _onIframeMouseEnter);
+        iframeWrap.removeEventListener('mouseleave', _onIframeMouseLeave);
+        window.removeEventListener('blur', _onWindowBlur);
+        // Restore window.open
+        window._ytOpenBlocked = false;
+        window.open = _origOpen;
+        document.getElementById(_fsStyleId)?.remove();
+        document.getElementById('_fs_topbar')?.remove();
+        document.getElementById('_fs_topbar_right')?.remove();
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      };
+
       wrap.appendChild(iframeWrap);
-      setTimeout(() => { iframe.src = embed; }, 0);
+
+      // Params: tắt logo, related, annotations, bật fullscreen, mã hóa origin
+      const _origin = encodeURIComponent(location.origin || 'https://localhost');
+      const embedClean = embed.includes('?')
+        ? embed + `&modestbranding=1&rel=0&iv_load_policy=3&fs=1&playsinline=1&origin=${_origin}&enablejsapi=1`
+        : embed + `?modestbranding=1&rel=0&iv_load_policy=3&fs=1&playsinline=1&origin=${_origin}&enablejsapi=1`;
+      setTimeout(() => { iframe.src = embedClean; }, 0);
     } else {
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;border-radius:8px';
@@ -838,12 +1055,23 @@ function openViewer(title, url, fileName, fileType) {
   } else if (isVideo) {
     const video = document.createElement('video');
     video.controls = true;
-    video.setAttribute('controlsList', 'nodownload noremoteplayback');
+    video.setAttribute('controlsList', 'nodownload noremoteplayback nofullscreen');
     video.setAttribute('playsinline', '');
-    video.oncontextmenu = () => false;
-    video.style.cssText = 'flex:1;width:100%;background:#000';
+    video.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); return false; };
+    video.style.cssText = 'flex:1;width:100%;background:#000;position:relative;z-index:1';
     video.oncanplay = hideLoading;
-    wrap.appendChild(video);
+    // Track video element để pause khi chuyển tab
+    video.addEventListener('play', () => { _activeVideoEl = video; });
+    video.addEventListener('pause', () => { if (_activeVideoEl === video) _activeVideoEl = null; });
+    // Overlay trong suốt chặn chuột phải trên video
+    const vOverlay = document.createElement('div');
+    vOverlay.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;';
+    vOverlay.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+    const vWrap = document.createElement('div');
+    vWrap.style.cssText = 'position:relative;flex:1;min-height:0;display:flex;flex-direction:column';
+    vWrap.appendChild(video);
+    vWrap.appendChild(vOverlay);
+    wrap.appendChild(vWrap);
     setTimeout(() => { video.src = url; }, 0);
     if (window.innerWidth < 768 && window.innerHeight > window.innerWidth) {
       const tip = document.createElement('div');
@@ -886,8 +1114,15 @@ function openViewer(title, url, fileName, fileType) {
 document.getElementById('closeViewer').addEventListener('click', closeViewer);
 document.getElementById('viewerModal').addEventListener('click', e => { if(e.target===document.getElementById('viewerModal')) closeViewer(); });
 function closeViewer() { 
+  _viewerActive = false;
+  _viewerIsVideo = false;
+  _activeVideoEl = null;
+  _hideTabWarning();
+  // Dọn listener phím F của iframe nếu có
+  const body = document.getElementById('viewerBody');
+  body.querySelectorAll('iframe').forEach(fr => { if (fr._cleanupF) fr._cleanupF(); });
   document.getElementById('viewerModal').classList.remove('open'); 
-  document.getElementById('viewerBody').innerHTML='';
+  body.innerHTML='';
   document.getElementById('viewerRotateBtn').style.display = 'none';
   _viewerRotated = false;
   if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
@@ -941,7 +1176,37 @@ loadMe().then(() => {
   checkNewNotifications(true);
 });
 
-// Realtime: lắng nghe thay đổi active của tài khoản này
+// ── Helper hiện màn hình bị đăng xuất do thiết bị mới ──
+function _showKickedScreen() {
+  if (typeof _wmDestroyed !== 'undefined') _wmDestroyed = true;
+  // Đóng viewer nếu đang mở
+  try { document.getElementById('viewerModal')?.classList.remove('open'); document.getElementById('viewerBody').innerHTML = ''; } catch(e) {}
+  setOffline().catch(() => {});
+  sessionStorage.clear();
+  document.body.innerHTML = `
+    <div style="position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;text-align:center;padding:2rem;z-index:99999">
+      <div style="font-size:3.5rem">📱</div>
+      <div style="color:#f59e0b;font-size:1.2rem;font-weight:800">Đăng nhập từ thiết bị khác</div>
+      <div style="color:rgba(255,255,255,.75);font-size:.92rem;max-width:340px;line-height:1.7">
+        Tài khoản vừa được đăng nhập từ một thiết bị khác.<br/>
+        Phiên này đã bị <b style="color:#ef4444">đăng xuất tự động</b>.
+      </div>
+      <div id="_kickCountdown" style="color:rgba(255,255,255,.5);font-size:.85rem">Tự động chuyển về đăng nhập sau <b style="color:#fff">5</b> giây...</div>
+      <button onclick="location.href='index.html'" style="background:#6366f1;color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer">
+        Đăng nhập lại
+      </button>
+    </div>`;
+  let _c = 5;
+  const _t = setInterval(() => {
+    _c--;
+    const el = document.getElementById('_kickCountdown');
+    if (el) el.innerHTML = `Tự động chuyển về đăng nhập sau <b style="color:#fff">${_c}</b> giây...`;
+    if (_c <= 0) { clearInterval(_t); location.href = 'index.html'; }
+  }, 1000);
+}
+
+// Realtime: lắng nghe thay đổi active VÀ session_token của tài khoản này
+// → đăng xuất tức thì khi thiết bị mới đăng nhập (không cần chờ polling 2 phút)
 db.channel('student-lock-' + currentUser)
   .on('postgres_changes', {
     event: 'UPDATE',
@@ -950,8 +1215,18 @@ db.channel('student-lock-' + currentUser)
     filter: `username=eq.${currentUser}`
   }, async (payload) => {
     const s = payload.new;
+    const localToken = sessionStorage.getItem('dh_token');
+
+    // Thiết bị mới đăng nhập → session_token trong DB đổi, không khớp local
+    if (s.session_token && localToken && s.session_token !== localToken) {
+      _showKickedScreen();
+      return;
+    }
+
+    // Admin khóa tài khoản
     if (!s.active) {
       if (typeof _wmDestroyed !== 'undefined') _wmDestroyed = true;
+      try { document.getElementById('viewerModal')?.classList.remove('open'); document.getElementById('viewerBody').innerHTML = ''; } catch(e) {}
       await setOffline();
       sessionStorage.clear();
       document.body.innerHTML = `
@@ -1194,28 +1469,7 @@ setInterval(async () => {
 
   // Bị đăng nhập thiết bị khác — token không khớp → đăng xuất
   if (data.session_token && data.session_token !== token) {
-    await setOffline();
-    sessionStorage.clear();
-    document.body.innerHTML = `
-      <div style="position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;text-align:center;padding:2rem;z-index:99999">
-        <div style="font-size:3.5rem">📱</div>
-        <div style="color:#f59e0b;font-size:1.2rem;font-weight:800">Đăng nhập từ thiết bị khác</div>
-        <div style="color:rgba(255,255,255,.75);font-size:.92rem;max-width:320px;line-height:1.7">
-          Tài khoản vừa được đăng nhập từ một thiết bị khác.<br/>
-          Phiên này đã bị đăng xuất tự động.
-        </div>
-        <div id="_devCountdown" style="color:rgba(255,255,255,.5);font-size:.85rem">Tự động chuyển về đăng nhập sau <b style="color:#fff">3</b> giây...</div>
-        <button onclick="location.href='index.html'" style="background:#6366f1;color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer">
-          Đăng nhập lại
-        </button>
-      </div>`;
-    let _c = 3;
-    const _t = setInterval(() => {
-      _c--;
-      const el = document.getElementById('_devCountdown');
-      if (el) el.innerHTML = `Tự động chuyển về đăng nhập sau <b style="color:#fff">${_c}</b> giây...`;
-      if (_c <= 0) { clearInterval(_t); location.href = 'index.html'; }
-    }, 1000);
+    _showKickedScreen();
     return;
   }
 
