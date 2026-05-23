@@ -716,6 +716,7 @@ async function openLessonDetail(id) {
     }
     card.querySelector('.video-thumb').addEventListener('click', () => {
       logAccess(id, l.name, v.id, v.title, 'video');
+      _currentLessonGroup = l.group_name || '';
       openViewer(v.title, url, v.file_name, isLink ? 'link' : 'video');
     });
     vGrid.appendChild(card);
@@ -770,6 +771,11 @@ let _viewerActive = false;      // đang mở viewer
 let _viewerIsVideo = false;     // đang xem video (cần chặn chuyển tab)
 let _activeVideoEl = null;      // element <video> đang phát (nếu có)
 let _tabWarnShown = false;      // đã hiện cảnh báo chuyển tab chưa
+let _currentLessonGroup = '';   // group_name của bài học đang xem
+
+// Các nhóm bài học TẮT overlay grid (video Drive bị lỗi quota — cần dùng nút Tải xuống)
+// Thêm tên nhóm vào đây nếu cần tắt overlay cho nhóm đó
+const _NO_OVERLAY_GROUPS = ['Đợt 4', 'dot 4', 'Dot 4'];
 
 // ── Chặn chuyển tab khi đang xem video ──
 document.addEventListener('visibilitychange', () => {
@@ -870,39 +876,41 @@ function openViewer(title, url, fileName, fileType) {
       iframeWrap.appendChild(iframe);
 
       // ── Grid 3×3 overlay: chặn toàn bộ ngoại trừ ô giữa ──
-      // Ô giữa (center-gap) pointer-events:none → click xuyên qua để bấm Play
-      // 8 ô xung quanh pointer-events:auto → chặn logo YT, nút chia sẻ, thanh tiêu đề, tên kênh
-      const grid = document.createElement('div');
-      grid.style.cssText = [
-        'position:absolute;top:0;left:0;width:100%;height:100%;',
-        'display:grid;',
-        // Hàng trên: che thanh tiêu đề + tên kênh (48px)
-        // Hàng giữa: chừa vùng Play (120px)
-        // Hàng dưới: che thanh controls + tên video + tên kênh phía dưới (72px)
-        'grid-template-rows:48px 1fr 72px;',
-        // Cột trái: che logo/tên kênh trái (200px)
-        // Cột giữa: chừa nút Play
-        // Cột phải: che nút chia sẻ/xem trên YT (200px)
-        'grid-template-columns:200px 1fr 200px;',
-        'z-index:10;pointer-events:none;'
-      ].join('');
+      // Tắt overlay cho các nhóm trong _NO_OVERLAY_GROUPS (video Drive bị lỗi quota)
+      const _skipOverlay = _NO_OVERLAY_GROUPS.some(g =>
+        _currentLessonGroup.toLowerCase().includes(g.toLowerCase())
+      );
 
-      for (let i = 0; i < 9; i++) {
-        const cell = document.createElement('div');
-        if (i === 4) {
-          // Ô chính giữa — cho phép click xuyên qua vào nút Play
-          cell.style.cssText = 'pointer-events:none;';
-        } else {
-          // 8 ô xung quanh — chặn click + chuột phải
-          cell.style.cssText = 'pointer-events:auto;background:transparent;';
-          cell.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
-          // Chặn mọi click (không cho focus vào iframe vùng này)
-          cell.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
-          cell.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+      if (!_skipOverlay) {
+        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        const grid = document.createElement('div');
+        grid.style.cssText = [
+          'position:absolute;top:0;left:0;width:100%;height:100%;',
+          'display:grid;',
+          isMobile
+            ? 'grid-template-rows:48px 1fr;'
+            : 'grid-template-rows:48px 1fr 72px;',
+          'grid-template-columns:200px 1fr 200px;',
+          'z-index:10;pointer-events:none;'
+        ].join('');
+
+        const totalCells = isMobile ? 6 : 9;
+        const centerIdx  = 4;
+
+        for (let i = 0; i < totalCells; i++) {
+          const cell = document.createElement('div');
+          if (i === centerIdx) {
+            cell.style.cssText = 'pointer-events:none;';
+          } else {
+            cell.style.cssText = 'pointer-events:auto;background:transparent;';
+            cell.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+            cell.addEventListener('click',     e => { e.preventDefault(); e.stopPropagation(); });
+            cell.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+          }
+          grid.appendChild(cell);
         }
-        grid.appendChild(cell);
+        iframeWrap.appendChild(grid);
       }
-      iframeWrap.appendChild(grid);
 
       // ── Phát hiện iframe mở tab mới (blur trick) ──
       // Khi YouTube mở tab mới, window mất focus → blur event
