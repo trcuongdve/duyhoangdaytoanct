@@ -899,9 +899,9 @@ function openViewer(title, url, fileName, fileType) {
       iframe.onload = hideLoading;
       iframeWrap.appendChild(iframe);
 
-      // ── Overlay che đúng 2 vùng trong khung đỏ ──
-      // Chỉ áp dụng trên desktop (mobile đã _skipOverlay = true)
-      if (!_skipOverlay) {
+      // ── Overlay che đúng 2 vùng trong khung đỏ — áp dụng tất cả video ──
+      // Chỉ desktop (mobile _skipOverlay = true nên không vào đây)
+      {
         const mkZone = (css) => {
           const d = document.createElement('div');
           d.style.cssText = 'position:absolute;z-index:10;pointer-events:auto;background:transparent;' + css;
@@ -910,10 +910,12 @@ function openViewer(title, url, fileName, fileType) {
           d.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
           iframeWrap.appendChild(d);
         };
-        // Vùng 1: Góc trên-trái — che tên video + tên kênh
+        // Vùng 1: Góc trên-trái — che tên video + avatar kênh (52px cao, 55% rộng)
         mkZone('top:0;left:0;width:55%;height:52px;');
-        // Vùng 2: Thanh dưới cùng — che logo YouTube + "Video khác"
-        mkZone('bottom:0;left:0;width:100%;height:36px;');
+        // Vùng 2: Góc dưới-phải — che logo YouTube + "Video khác"
+        // Thanh controls YT cao ~46px, logo nằm bên phải trong thanh đó
+        // Dùng bottom:0 height:46px để che đúng thanh, chỉ che nửa phải (không đụng play/pause/tua)
+        mkZone('bottom:0;right:0;width:260px;height:46px;');
       }
 
       // ── Phát hiện iframe mở tab mới (blur trick) ──
