@@ -899,34 +899,21 @@ function openViewer(title, url, fileName, fileType) {
       iframe.onload = hideLoading;
       iframeWrap.appendChild(iframe);
 
-      // ── Grid 3×3 overlay: chặn toàn bộ ngoại trừ ô giữa ──
-      // Tắt overlay cho các nhóm trong _NO_OVERLAY_GROUPS (video Drive bị lỗi quota)
+      // ── Overlay che đúng 2 vùng trong khung đỏ ──
+      // Chỉ áp dụng trên desktop (mobile đã _skipOverlay = true)
       if (!_skipOverlay) {
-        const grid = document.createElement('div');
-        grid.style.cssText = [
-          'position:absolute;top:0;left:0;width:100%;height:100%;',
-          'display:grid;',
-          'grid-template-rows:48px 1fr 72px;',
-          'grid-template-columns:200px 1fr 200px;',
-          'z-index:10;pointer-events:none;'
-        ].join('');
-
-        const totalCells = 9; // chỉ desktop mới vào đây (mobile đã _skipOverlay)
-        const centerIdx  = 4;
-
-        for (let i = 0; i < totalCells; i++) {
-          const cell = document.createElement('div');
-          if (i === centerIdx) {
-            cell.style.cssText = 'pointer-events:none;';
-          } else {
-            cell.style.cssText = 'pointer-events:auto;background:transparent;';
-            cell.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
-            cell.addEventListener('click',     e => { e.preventDefault(); e.stopPropagation(); });
-            cell.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
-          }
-          grid.appendChild(cell);
-        }
-        iframeWrap.appendChild(grid);
+        const mkZone = (css) => {
+          const d = document.createElement('div');
+          d.style.cssText = 'position:absolute;z-index:10;pointer-events:auto;background:transparent;' + css;
+          d.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
+          d.addEventListener('click',     e => { e.preventDefault(); e.stopPropagation(); });
+          d.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+          iframeWrap.appendChild(d);
+        };
+        // Vùng 1: Góc trên-trái — che tên video + tên kênh
+        mkZone('top:0;left:0;width:55%;height:52px;');
+        // Vùng 2: Thanh dưới cùng — che logo YouTube + "Video khác"
+        mkZone('bottom:0;left:0;width:100%;height:36px;');
       }
 
       // ── Phát hiện iframe mở tab mới (blur trick) ──
