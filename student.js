@@ -864,7 +864,9 @@ function openViewer(title, url, fileName, fileType) {
       // ── Kiểm tra có phải Drive bị lỗi quota không ──
       // Nếu thuộc nhóm tắt overlay (_NO_OVERLAY_GROUPS) VÀ là Google Drive → hiện banner tải xuống
       const isDrive = url && url.includes('drive.google.com');
-      const _skipOverlay = _NO_OVERLAY_GROUPS.some(g =>
+      const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      // Tắt overlay nếu: đang dùng điện thoại HOẶC thuộc nhóm _NO_OVERLAY_GROUPS
+      const _skipOverlay = isMobileDevice || _NO_OVERLAY_GROUPS.some(g =>
         _currentLessonGroup.toLowerCase().includes(g.toLowerCase())
       );
       const dlUrl = isDrive ? getDownloadUrl(url) : null;
@@ -900,19 +902,16 @@ function openViewer(title, url, fileName, fileType) {
       // ── Grid 3×3 overlay: chặn toàn bộ ngoại trừ ô giữa ──
       // Tắt overlay cho các nhóm trong _NO_OVERLAY_GROUPS (video Drive bị lỗi quota)
       if (!_skipOverlay) {
-        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
         const grid = document.createElement('div');
         grid.style.cssText = [
           'position:absolute;top:0;left:0;width:100%;height:100%;',
           'display:grid;',
-          isMobile
-            ? 'grid-template-rows:48px 1fr;'
-            : 'grid-template-rows:48px 1fr 72px;',
+          'grid-template-rows:48px 1fr 72px;',
           'grid-template-columns:200px 1fr 200px;',
           'z-index:10;pointer-events:none;'
         ].join('');
 
-        const totalCells = isMobile ? 6 : 9;
+        const totalCells = 9; // chỉ desktop mới vào đây (mobile đã _skipOverlay)
         const centerIdx  = 4;
 
         for (let i = 0; i < totalCells; i++) {
