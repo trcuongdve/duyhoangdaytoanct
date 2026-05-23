@@ -1036,6 +1036,22 @@ function openViewer(title, url, fileName, fileType) {
         : embed + `?modestbranding=1&rel=0&iv_load_policy=3&fs=1&playsinline=1&origin=${_origin}&enablejsapi=1`;
       setTimeout(() => { iframe.src = embedClean; }, 0);
     } else {
+      // URL không phải YouTube — có thể là Google Drive video
+      // Khi Drive bị lỗi quota "đạt giới hạn người xem", iframe vẫn load nhưng hiện thông báo lỗi
+      // → Hiện nút tải xuống dự phòng ngay từ đầu để học viên có thể tải về xem offline
+      const dlUrl = getDownloadUrl(url);
+      if (dlUrl) {
+        // Banner thông báo tải xuống dự phòng
+        const dlBanner = document.createElement('div');
+        dlBanner.style.cssText = 'background:#eff6ff;border-left:3px solid #3b82f6;padding:.5rem .85rem;border-radius:8px;margin-bottom:.5rem;font-size:.8rem;color:#1e40af;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:.75rem';
+        dlBanner.innerHTML = `
+          <span>📥 Nếu video không phát được (giới hạn người xem), hãy tải xuống để xem.</span>
+          <a href="${dlUrl}" target="_blank" rel="noopener"
+             style="background:#3b82f6;color:#fff;padding:.3rem .85rem;border-radius:7px;font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+            ⬇ Tải xuống
+          </a>`;
+        body.insertBefore(dlBanner, wrap);
+      }
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'flex:1;width:100%;height:100%;border:none;border-radius:8px';
       iframe.onload = hideLoading;
