@@ -861,10 +861,32 @@ function openViewer(title, url, fileName, fileType) {
     // Video (YouTube/Drive/Embed) — set src qua JS
     const embed = getEmbedUrl(url) || url; // nếu là embed URL thì dùng thẳng
     if (embed) {
-      body.insertBefore(Object.assign(document.createElement('div'), {
-        style: 'background:#fffbeb;border-left:3px solid #f59e0b;padding:.5rem .85rem;border-radius:8px;margin-bottom:.5rem;font-size:.8rem;color:#92400e;flex-shrink:0',
-        innerHTML: '💡 Video bị mờ? Nhấn ⚙️ → <b>Chất lượng</b> → tăng lên <b>720p hoặc 1080p</b>'
-      }), wrap);
+      // ── Kiểm tra có phải Drive bị lỗi quota không ──
+      // Nếu thuộc nhóm tắt overlay (_NO_OVERLAY_GROUPS) VÀ là Google Drive → hiện banner tải xuống
+      const isDrive = url && url.includes('drive.google.com');
+      const _skipOverlay = _NO_OVERLAY_GROUPS.some(g =>
+        _currentLessonGroup.toLowerCase().includes(g.toLowerCase())
+      );
+      const dlUrl = isDrive ? getDownloadUrl(url) : null;
+
+      if (_skipOverlay && dlUrl) {
+        // Banner tải xuống dự phòng cho video Drive bị lỗi quota
+        const dlBanner = document.createElement('div');
+        dlBanner.style.cssText = 'background:#eff6ff;border-left:3px solid #3b82f6;padding:.6rem .85rem;border-radius:8px;margin-bottom:.5rem;font-size:.82rem;color:#1e40af;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap';
+        dlBanner.innerHTML = `
+          <span>📥 Video không phát được? Nhấn tải xuống để xem offline.</span>
+          <a href="${dlUrl}" target="_blank" rel="noopener"
+             style="background:#3b82f6;color:#fff;padding:.35rem .9rem;border-radius:7px;font-size:.8rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+            ⬇ Tải xuống
+          </a>`;
+        body.insertBefore(dlBanner, wrap);
+      } else {
+        // Tip chất lượng (chỉ hiện khi không phải Drive lỗi quota)
+        body.insertBefore(Object.assign(document.createElement('div'), {
+          style: 'background:#fffbeb;border-left:3px solid #f59e0b;padding:.5rem .85rem;border-radius:8px;margin-bottom:.5rem;font-size:.8rem;color:#92400e;flex-shrink:0',
+          innerHTML: '💡 Video bị mờ? Nhấn ⚙️ → <b>Chất lượng</b> → tăng lên <b>720p hoặc 1080p</b>'
+        }), wrap);
+      }
       const iframeWrap = document.createElement('div');
       iframeWrap.style.cssText = 'position:relative;flex:1;min-height:0;overflow:hidden';
       const iframe = document.createElement('iframe');
@@ -877,10 +899,6 @@ function openViewer(title, url, fileName, fileType) {
 
       // ── Grid 3×3 overlay: chặn toàn bộ ngoại trừ ô giữa ──
       // Tắt overlay cho các nhóm trong _NO_OVERLAY_GROUPS (video Drive bị lỗi quota)
-      const _skipOverlay = _NO_OVERLAY_GROUPS.some(g =>
-        _currentLessonGroup.toLowerCase().includes(g.toLowerCase())
-      );
-
       if (!_skipOverlay) {
         const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
         const grid = document.createElement('div');
@@ -933,11 +951,20 @@ function openViewer(title, url, fileName, fileType) {
       window.addEventListener('blur', _onWindowBlur);
 
       // Chặn window.open toàn trang khi viewer đang mở
+      // Ngoại lệ: cho phép link tải xuống Google Drive đi qua
       const _origOpen = window.open;
       window._ytOpenBlocked = true;
       window.open = function(...args) {
         if (window._ytOpenBlocked) {
-          // Chặn hoàn toàn — không cho mở tab mới
+          const targetUrl = args[0] || '';
+          // Cho phép link tải xuống Drive
+          if (typeof targetUrl === 'string' && (
+            targetUrl.includes('drive.google.com/uc') ||
+            targetUrl.includes('drive.google.com/file') ||
+            targetUrl.includes('export=download')
+          )) {
+            return _origOpen.apply(window, args);
+          }
           return null;
         }
         return _origOpen.apply(window, args);
