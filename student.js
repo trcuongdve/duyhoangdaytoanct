@@ -54,7 +54,7 @@ if (sessionStorage.getItem('dh_role') !== 'student') location.href = 'index.html
               Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn.<br/>
               Vui lòng quay lại sau ít phút.
             </div>
-            <div style="font-size:.82rem;color:#94a3b8">Liên hệ trợ lý nếu cần hỗ trợ gấp.</div>
+            <div style="font-size:.82rem;color:#94a3b8">trợ lý và giáo viên ko hổ trợ duy trì tài khoản.</div>
           </div>
         </div>`;
     }
@@ -140,10 +140,10 @@ async function loadMe() {
     const bg    = daysLeft === 0 ? '#fee2e2' : isUrgent ? '#fef3c7' : '#eff6ff';
     const icon  = daysLeft === 0 ? '🔴' : isUrgent ? '⚠️' : '📅';
     const msg   = daysLeft === 0
-      ? `Tài khoản hết hạn <b>hôm nay</b>! Liên hệ ngay để gia hạn.`
+      ? `Tài khoản hết hạn <b>hôm nay</b>! trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`
       : daysLeft < 0
-      ? `Tài khoản đã hết hạn vào <b>${dateStr}</b>.`
-      : `${type === 'class' ? `Khóa học <b>${myClass}</b>` : 'Tài khoản'} sẽ hết hạn vào <b>${dateStr}</b> — còn <b>${daysLeft} ngày</b>. Liên hệ trợ lý để gia hạn.`;
+      ? `Tài khoản đã hết hạn vào <b>${dateStr}</b>. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`
+      : `${type === 'class' ? `Khóa học <b>${myClass}</b>` : 'Tài khoản'} sẽ hết hạn vào <b>${dateStr}</b> — còn <b>${daysLeft} ngày</b>. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`;
     banner.style.cssText = `display:block;background:${bg};border-left:4px solid ${color};border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.88rem;color:${color};font-weight:600`;
     banner.innerHTML = `${icon} ${msg}`;
   }
@@ -183,7 +183,7 @@ async function loadMe() {
 
   // Nếu bị khóa → đăng xuất ngay
   if (locked) {
-    alert('Khóa học của bạn đã kết thúc. Tài khoản đã bị khóa. Vui lòng liên hệ trợ lý.');
+    alert('Khóa học của bạn đã kết thúc. Tài khoản đã bị khóa. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.');
     sessionStorage.clear();
     location.href = 'index.html';
     return;
@@ -1274,7 +1274,7 @@ db.channel('student-lock-' + currentUser)
           <div style="color:#ef4444;font-size:1.3rem;font-weight:800">Tài khoản đã bị khóa</div>
           <div style="color:rgba(255,255,255,.75);font-size:.95rem;max-width:320px;line-height:1.7">
             Tài khoản của bạn vừa bị khóa bởi quản trị viên.<br/>
-            Vui lòng liên hệ <b style="color:#fff">Trợ Lý Trần Cường hoặc Quốc Toàn</b> để được hỗ trợ.
+            trợ lý và giáo viên ko hổ trợ duy trì tài khoản.
           </div>
           <div id="_lockCountdown" style="color:rgba(255,255,255,.5);font-size:.85rem">Tự động chuyển về đăng nhập sau <b style="color:#fff">3</b> giây...</div>
           <button onclick="location.href='index.html'" style="margin-top:.5rem;background:#6366f1;color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer">
@@ -1323,7 +1323,7 @@ function _showMaintenanceScreen() {
           Chúng tôi đang nâng cấp hệ thống để phục vụ bạn tốt hơn.<br/>
           Vui lòng quay lại sau ít phút.
         </div>
-        <div style="font-size:.82rem;color:#94a3b8">Liên hệ trợ lý nếu cần hỗ trợ gấp.</div>
+        <div style="font-size:.82rem;color:#94a3b8">trợ lý và giáo viên ko hổ trợ duy trì tài khoản.</div>
       </div>
     </div>`;
 }
@@ -1514,7 +1514,7 @@ setInterval(async () => {
 
   // Tài khoản bị khóa thủ công
   if (!data.active) {
-    alert('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ trợ lý.');
+    alert('Tài khoản của bạn đã bị khóa. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.');
     await setOffline();
     sessionStorage.clear();
     location.href = 'index.html';
@@ -1527,7 +1527,7 @@ setInterval(async () => {
     const exp = new Date(data.expiry_date); exp.setHours(0,0,0,0);
     if (today > exp) {
       await db.from('students').update({ active: false }).eq('username', currentUser);
-      alert('Tài khoản của bạn đã hết hạn. Vui lòng liên hệ trợ lý để gia hạn.');
+      alert('Tài khoản của bạn đã hết hạn. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.');
       await setOffline();
       sessionStorage.clear();
       location.href = 'index.html';
@@ -1543,7 +1543,7 @@ setInterval(async () => {
     const allExpired = (clsList||[]).filter(c=>c.end_date).every(c => new Date(c.end_date) < today);
     if (allExpired && (clsList||[]).some(c=>c.end_date)) {
       await db.from('students').update({ active: false }).eq('username', currentUser);
-      alert(`Tất cả khóa học đã kết thúc. Tài khoản đã bị khóa.`);
+      alert(`Tất cả khóa học đã kết thúc. Tài khoản đã bị khóa. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`);
       await setOffline();
       sessionStorage.clear();
       location.href = 'index.html';

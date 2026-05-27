@@ -224,6 +224,20 @@ document.querySelector('.av-role').textContent      = displayRole;
 
 if (!isTeacher) {
   document.querySelectorAll('[data-page="create-student"]').forEach(el => el.style.display = 'none');
+  // Ẩn tất cả các phần liên quan đến duy trì tài khoản (expiry/gia hạn)
+  const _hideForAssistant = [
+    'expiryReminderPanel',   // Panel nhắc nhở sắp hết hạn (tổng quan)
+    'classExpiryNotices',    // Thông báo lớp hết hạn (tổng quan)
+    'syncExpiryBtn',         // Nút đồng bộ hết hạn (danh sách học sinh)
+    'studentFilterExpiry',   // Filter lọc theo hết hạn (danh sách học sinh)
+    'csExpiryGroup',         // Trường ngày hết hạn (form tạo học viên)
+    'esExpiryGroup',         // Trường ngày hết hạn (modal sửa học viên)
+    'addExpiryGroup',        // Trường ngày hết hạn (modal thêm học viên)
+  ];
+  _hideForAssistant.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 }
 document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); sessionStorage.clear(); location.href='index.html'; });
 document.getElementById('menuToggle').addEventListener('click', () => {
@@ -718,8 +732,8 @@ document.getElementById('sendExpiryRemindersBtn')?.addEventListener('click', asy
     const exp = new Date(s.expiry_date); exp.setHours(0,0,0,0);
     const daysLeft = Math.round((exp - today) / 86400000);
     const msg = daysLeft === 0
-      ? `Tài khoản của bạn hết hạn HÔM NAY! Vui lòng liên hệ trợ lý ngay để gia hạn.`
-      : `Tài khoản của bạn sẽ hết hạn vào ngày ${exp.toLocaleDateString('vi-VN')} (còn ${daysLeft} ngày). Vui lòng liên hệ trợ lý để gia hạn kịp thời.`;
+      ? `Tài khoản của bạn hết hạn HÔM NAY! trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`
+      : `Tài khoản của bạn sẽ hết hạn vào ngày ${exp.toLocaleDateString('vi-VN')} (còn ${daysLeft} ngày). trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`;
     await db.from('announcements').insert({
       title: `⏰ Nhắc nhở: Tài khoản sắp hết hạn`,
       content: msg,
@@ -914,7 +928,7 @@ document.getElementById('csSaveBtn').addEventListener('click', async () => {
     full_name: name, phone: phone || null,
     username, password: await hashPw(password),
     class_name: cls || null,
-    active: true, expiry_date: expiry, notes
+    active: true, expiry_date: isTeacher ? expiry : null, notes
   }).select('id').single();
 
   if (error) { err.textContent = error.message.includes('unique') ? 'Gmail nay da ton tai.' : error.message; return; }
@@ -1460,7 +1474,9 @@ document.getElementById('addStudentSaveBtn').addEventListener('click', async () 
   // Kiểm tra trùng Gmail / SĐT
   const dupW = await checkDuplicate(username, phone);
   if (dupW.length) { err.innerHTML = '⚠️ ' + dupW.join('<br/>⚠️ '); return; }
-  const { error, data: newSt } = await db.from('students').insert({ student_code:code, full_name:name, phone, username, password: await hashPw(password), class_name:cls, active:true, expiry_date:expiry, notes }).select('id').single();
+  // Trợ lý không được đặt ngày hết hạn
+  const expiryToSave = isTeacher ? expiry : null;
+  const { error, data: newSt } = await db.from('students').insert({ student_code:code, full_name:name, phone, username, password: await hashPw(password), class_name:cls, active:true, expiry_date:expiryToSave, notes }).select('id').single();
   if (error) { err.textContent=error.message.includes('unique')?'Gmail đã tồn tại.':error.message; return; }
   // Thêm vào student_classes
   if (cls && newSt?.id) {
@@ -1602,7 +1618,9 @@ document.getElementById('esSaveBtn').addEventListener('click', async () => {
   const phone = document.getElementById('esPhone')?.value.trim() || '';
   const dupWE = await checkDuplicate(username, phone, editingStudentId);
   if (dupWE.length) { err.innerHTML = '⚠️ ' + dupWE.join('<br/>⚠️ '); return; }
-  const updates={ student_code:code, full_name:name, username, class_name:cls||null, expiry_date:expiry, notes };
+  // Trợ lý không được thay đổi ngày hết hạn — giữ nguyên giá trị cũ
+  const updates={ student_code:code, full_name:name, username, class_name:cls||null, notes };
+  if (isTeacher) updates.expiry_date = expiry;
   const { data: orig } = await db.from('students').select('student_code').eq('id', editingStudentId).single();
   if (code && code !== (orig?.student_code || '')) updates.password = await hashPw(code);
   const { error } = await db.from('students').update(updates).eq('id',editingStudentId);

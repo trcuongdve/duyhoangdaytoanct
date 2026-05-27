@@ -113,7 +113,7 @@
       <div id="classExpiryNotices" style="margin-top:1rem"></div>
 
       <!-- Nhắc nhở hết hạn -->
-      <div class="overview-panel" style="margin-top:1rem">
+      <div id="expiryReminderPanel" class="overview-panel" style="margin-top:1rem">
         <div class="panel-header">
           <span>⏰ Nhắc nhở sắp hết hạn</span>
           <button class="btn-sm btn-primary" id="sendExpiryRemindersBtn">📢 Gửi nhắc nhở tự động</button>
@@ -225,8 +225,10 @@
           <label>Lớp</label>
           <select id="csClassSelect"><option value="">-- Chọn lớp --</option></select>
 
+          <div id="csExpiryGroup">
           <label>Ngày hết hạn <span class="muted">(để trống = không giới hạn)</span></label>
           <input type="date" id="csExpiry"/>
+          </div>
 
           <label>Ghi chú <span class="muted">(tuỳ chọn)</span></label>
           <textarea id="csNotes" placeholder="Ghi chú riêng cho học viên..." rows="2" style="resize:vertical"></textarea>
@@ -262,7 +264,7 @@
         <h1 class="page-title">Danh sách học sinh</h1>
         <div style="display:flex;gap:.5rem">
           <button class="btn-outline" id="genMissingCodesBtn" title="Tự động sinh mã cho học viên chưa có">🔧 Sinh mã còn thiếu</button>
-          <button class="btn-outline" id="syncExpiryBtn" title="Đồng bộ ngày hết hạn từ lớp">📅 Đồng bộ hết hạn</button>
+          <button class="btn-outline" id="syncExpiryBtn" title="Đồng bộ ngày hết hạn từ lớp" data-teacher-only>📅 Đồng bộ hết hạn</button>
           <button class="btn-outline" id="exportStudentsBtn">⬇ Xuất Excel</button>
           <button class="btn-primary" id="openAddStudentBtn">➕ Thêm học sinh</button>
         </div>
@@ -270,7 +272,7 @@
       <div class="filter-bar">
         <input type="text" id="studentSearch" placeholder="🔍 Tìm kiếm học sinh..."/>
         <select id="studentFilterClass"><option value="">Tất cả lớp</option></select>
-        <select id="studentFilterExpiry" style="padding:.5rem .9rem;border:1.5px solid var(--border);border-radius:10px;outline:none;font-size:.88rem">
+        <select id="studentFilterExpiry" data-teacher-only style="padding:.5rem .9rem;border:1.5px solid var(--border);border-radius:10px;outline:none;font-size:.88rem">
           <option value="">Tất cả trạng thái</option>
           <option value="7">⚠️ Hết hạn trong 7 ngày</option>
           <option value="14">⚠️ Hết hạn trong 14 ngày</option>
@@ -634,8 +636,10 @@
         <select id="esAddClassSelect" style="flex:1"><option value="">-- Thêm lớp --</option></select>
         <button type="button" id="esAddClassBtn" class="btn-sm btn-primary">➕ Thêm</button>
       </div>
+      <div id="esExpiryGroup">
       <label>Ngày hết hạn <span class="muted">(để trống = không giới hạn)</span></label>
       <input type="date" id="esExpiry"/>
+      </div>
       <label>Ghi chú <span class="muted">(tuỳ chọn)</span></label>
       <textarea id="esNotes" placeholder="Ghi chú riêng cho học viên..." rows="2" style="resize:vertical"></textarea>
       <div id="esError" class="error-msg"></div>
@@ -674,8 +678,10 @@
       <input type="text" id="addPassword" placeholder="Tự động theo mã học viên" style="background:var(--bg,#f8fafc);color:var(--muted,#94a3b8)" readonly/>
       <label>Lớp</label>
       <select id="addClass"><option value="">-- Chọn lớp --</option></select>
+      <div id="addExpiryGroup">
       <label>Ngày hết hạn <span class="muted">(để trống = không giới hạn)</span></label>
       <input type="date" id="addExpiry"/>
+      </div>
       <label>Ghi chú <span class="muted">(tuỳ chọn)</span></label>
       <textarea id="addNotes" placeholder="Ghi chú riêng cho học viên..." rows="2" style="resize:vertical"></textarea>
       <div id="addStudentError" class="error-msg"></div>
