@@ -445,7 +445,7 @@ async function renderGroups() {
       : '';
     bodyEl.innerHTML = `<div class="group-card-name">${g.name}${depthBadge}</div>
       <div class="group-card-meta">
-        ${g.class_name ? `<span class="class-tag">${g.class_name}</span>` : ''}
+        ${g.class_name ? g.class_name.split(',').map(c=>`<span class="class-tag">${c.trim()}</span>`).join('') : ''}
         <span class="group-card-count">${children.length ? children.length + ' nhóm con • ' : ''}${directLessons.length} bài học</span>
       </div>`;
 
@@ -516,6 +516,31 @@ async function renderGroups() {
 
 
 let editingGroupId = null;
+
+// ---- Helper: render tags lớp đã chọn trong groupModal ----
+function renderGroupClassTags(selectedClasses) {
+  const container = document.getElementById('groupClassTags');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!selectedClasses.length) {
+    container.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Tất cả lớp (không giới hạn)</span>';
+    return;
+  }
+  selectedClasses.forEach(cls => {
+    const tag = document.createElement('div');
+    tag.style.cssText = 'display:flex;align-items:center;gap:.3rem;background:#eef2ff;color:#4338ca;padding:.25rem .6rem;border-radius:20px;font-size:.8rem;font-weight:600';
+    tag.innerHTML = `<span>${cls}</span><button type="button" data-cls="${cls}" style="background:none;border:none;cursor:pointer;color:#6366f1;font-size:.85rem;padding:0;line-height:1">✕</button>`;
+    tag.querySelector('button').addEventListener('click', () => {
+      const idx = _groupSelectedClasses.indexOf(cls);
+      if (idx > -1) _groupSelectedClasses.splice(idx, 1);
+      renderGroupClassTags(_groupSelectedClasses);
+    });
+    container.appendChild(tag);
+  });
+}
+
+let _groupSelectedClasses = [];
+
 function openGroupModal(g=null, parentId=null) {
   editingGroupId = g ? g.id : null;
   document.getElementById('groupModalTitle').textContent = g ? 'Sửa nhóm' : (parentId ? 'Tạo nhóm con' : 'Tạo nhóm');
@@ -523,25 +548,45 @@ function openGroupModal(g=null, parentId=null) {
   document.getElementById('groupNameInput').dataset.oldName = g ? g.name : '';
   document.getElementById('groupNameInput').dataset.parentId = g ? (g.parent_id || '') : (parentId || '');
   document.getElementById('groupError').textContent = '';
-  populateClassFilters().then(() => { document.getElementById('groupClassSelect').value = g ? (g.class_name||'') : ''; });
+
+  // Parse class_name thành mảng (hỗ trợ cả cũ 1 lớp và mới nhiều lớp)
+  const rawCls = g ? (g.class_name || '') : '';
+  _groupSelectedClasses = rawCls ? rawCls.split(',').map(c => c.trim()).filter(Boolean) : [];
+
+  populateClassFilters().then(() => {
+    // Reset select về mặc định
+    const sel = document.getElementById('groupClassSelect');
+    if (sel) sel.value = '';
+    renderGroupClassTags(_groupSelectedClasses);
+  });
   document.getElementById('groupModal').classList.add('open');
 }
+
+// Khi chọn lớp từ dropdown → thêm vào tags
+document.getElementById('groupClassSelect').addEventListener('change', function() {
+  const cls = this.value;
+  if (cls && !_groupSelectedClasses.includes(cls)) {
+    _groupSelectedClasses.push(cls);
+    renderGroupClassTags(_groupSelectedClasses);
+  }
+  this.value = '';
+});
 document.getElementById('openAddGroupBtn').addEventListener('click', () => openGroupModal());
 document.getElementById('groupCancelBtn').addEventListener('click', () => document.getElementById('groupModal').classList.remove('open'));
 document.getElementById('groupSaveBtn').addEventListener('click', async () => {
   const name = document.getElementById('groupNameInput').value.trim();
   const oldName = document.getElementById('groupNameInput').dataset.oldName;
   const parentId = document.getElementById('groupNameInput').dataset.parentId || null;
-  const cls = document.getElementById('groupClassSelect').value;
+  const cls = _groupSelectedClasses.length ? _groupSelectedClasses.join(',') : null;
   const err = document.getElementById('groupError');
   if (!name) { err.textContent = 'Vui lòng nhập tên nhóm.'; return; }
   if (editingGroupId) {
-    await db.from('lesson_groups').update({ name, class_name: cls||null }).eq('id', editingGroupId);
+    await db.from('lesson_groups').update({ name, class_name: cls }).eq('id', editingGroupId);
     if (oldName && oldName !== name) await db.from('lessons').update({ group_name: name }).eq('group_name', oldName);
   } else {
     const { error } = await db.from('lesson_groups').insert({
       name,
-      class_name: cls || null,
+      class_name: cls,
       parent_id: parentId ? parseInt(parentId) : null
     });
     if (error) { err.textContent = 'Tên nhóm đã tồn tại.'; return; }

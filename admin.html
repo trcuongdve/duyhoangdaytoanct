@@ -855,8 +855,13 @@
       <h2 id="groupModalTitle">Tạo nhóm</h2>
       <label>Tên nhóm</label>
       <input type="text" id="groupNameInput" placeholder="VD: Chương 1, Đại số, Ôn tập..."/>
-      <label>Lớp <span class="muted">(tuỳ chọn)</span></label>
-      <select id="groupClassSelect"><option value="">-- Tất cả lớp --</option></select>
+      <label>Chia sẻ cho lớp <span class="muted">(để trống = tất cả lớp)</span></label>
+      <!-- Dropdown chọn lớp -->
+      <div style="position:relative">
+        <select id="groupClassSelect" style="width:100%"><option value="">-- Chọn lớp để thêm --</option></select>
+      </div>
+      <!-- Tags lớp đã chọn -->
+      <div id="groupClassTags" style="display:flex;flex-wrap:wrap;gap:.4rem;min-height:2rem;padding:.3rem 0"></div>
       <div id="groupError" class="error-msg"></div>
       <div class="modal-actions">
         <button id="groupCancelBtn" class="btn-outline">Hủy</button>

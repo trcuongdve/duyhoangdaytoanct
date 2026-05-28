@@ -486,7 +486,13 @@ function renderLessonListFromCache() {
 
   function buildGroupCard(g, depth, colorIdx) {
     const c = colors[colorIdx % colors.length];
-    const children = (allGroups||[]).filter(x => x.parent_id === g.id);
+    // Nhóm con: filter theo lớp học viên
+    const children = (allGroups||[]).filter(x => {
+      if (x.parent_id !== g.id) return false;
+      if (!x.class_name) return true;
+      const gc = x.class_name.split(',').map(s => s.trim()).filter(Boolean);
+      return myClasses.some(mc => gc.includes(mc));
+    });
     const directLessons = getLessonsForGroup(g.id, g.name);
     // Bỏ qua nhóm không có nội dung gì
     if (!directLessons.length && !children.length) return null;
@@ -559,8 +565,13 @@ function renderLessonListFromCache() {
   // Bài học không thuộc nhóm nào
   const ungrouped = filtered.filter(l => !l.group_id && !l.group_name);
 
-  // Render nhóm gốc
-  const roots = (allGroups||[]).filter(g => !g.parent_id);
+  // Render nhóm gốc — chỉ hiển thị nhóm không có class_name HOẶC class_name chứa lớp của học viên
+  const roots = (allGroups||[]).filter(g => {
+    if (g.parent_id) return false; // chỉ lấy root
+    if (!g.class_name) return true; // không giới hạn lớp → hiển thị tất cả
+    const groupClasses = g.class_name.split(',').map(c => c.trim()).filter(Boolean);
+    return myClasses.some(mc => groupClasses.includes(mc));
+  });
   roots.forEach((g, gi) => {
     const card = buildGroupCard(g, 0, gi);
     if (card) grid.appendChild(card);
