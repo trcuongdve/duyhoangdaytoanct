@@ -69,12 +69,6 @@ function _calcCurrentStreak(dateKeys) {
 }
 
 function _buildCompetitionStats({ loginLogs = [], accessLogs = [], lessonViews = [] }) {
-  // Theo yêu cầu: ép mọi chỉ số về 0.
-  const FORCE_ZERO = true;
-  if (FORCE_ZERO) {
-    return { points: 0, streak: 0, studyHours: 0, unlockedCount: 0, unlockedBadges: [] };
-  }
-
   const allDateKeys = [...new Set([
     ...loginLogs.map(x => _toDateKey(x.logged_in_at)),
     ...accessLogs.map(x => _toDateKey(x.accessed_at)),
@@ -128,44 +122,47 @@ function _buildCompetitionStats({ loginLogs = [], accessLogs = [], lessonViews =
     (loginDays * POINTS_PER_ACTIVE_DAY)
   );
 
+  // Helper tính % tiến độ (0–100)
+  const _pct = (cur, max) => Math.min(100, Math.round((cur / max) * 100));
+
   const defs = [
-    { n:'Mầm non 🌱', ok: points >= 50 },
-    { n:'Khởi đầu 🚀', ok: studyHours >= 1 },
-    { n:'Chăm chỉ 📘', ok: studyHours >= 5 },
-    { n:'Siêng năng ✨', ok: loginDays >= 7 },
-    { n:'Bắt đầu bùng 🔥', ok: streak >= 3 },
-    { n:'Tuần lửa 🔥🔥', ok: streak >= 7 },
-    { n:'Núi lửa 🌋', ok: streak >= 14 },
-    { n:'Cháy máy ☄️', ok: streak >= 30 },
-    { n:'Hỏa thần 👑', ok: streak >= 100 },
-    { n:'Khởi động ⏱️', ok: studyHours >= 10 },
-    { n:'Chăm học 📚', ok: studyHours >= 50 },
-    { n:'Học bá 🎓', ok: studyHours >= 100 },
-    { n:'Máy cày 🤖', ok: studyHours >= 250 },
-    { n:'Quái vật học tập ☠️', ok: studyHours >= 500 },
-    { n:'Học sinh giỏi ⭐', ok: points >= 200 },
-    { n:'Xuất sắc 🌟', ok: points >= 500 },
-    { n:'Kim cương 💎', ok: points >= 1000 },
-    { n:'Cao thủ 🏆', ok: points >= 3000 },
-    { n:'Vô địch 👑', ok: points >= 5000 },
-    { n:'Huyền thoại 🔥', ok: points >= 10000 },
-    { n:'Cú đêm 🌙', ok: hasLateNight },
-    { n:'Dậy sớm ☀️', ok: hasEarlyBird },
-    { n:'Chuyên cần 📅', ok: streak >= 14 },
-    { n:'Bền bỉ 💪', ok: longestSessionMinutes >= 180 },
-    { n:'Tăng tốc ⚡', ok: maxDayHours >= 5 },
-    { n:'Thành viên VIP 💠', ok: streak >= 30 },
-    { n:'Bá chủ BXH 🥇', ok: false },
+    { n:'Mầm non 🌱',          ok: points >= 50,                pct: _pct(points, 50),                cur: `${Math.round(points)}/50 điểm` },
+    { n:'Khởi đầu 🚀',         ok: studyHours >= 1,             pct: _pct(studyHours, 1),             cur: `${studyHours.toFixed(1)}/1 giờ` },
+    { n:'Chăm chỉ 📘',         ok: studyHours >= 5,             pct: _pct(studyHours, 5),             cur: `${studyHours.toFixed(1)}/5 giờ` },
+    { n:'Siêng năng ✨',        ok: loginDays >= 7,              pct: _pct(loginDays, 7),              cur: `${loginDays}/7 ngày` },
+    { n:'Bắt đầu bùng 🔥',     ok: streak >= 3,                 pct: _pct(streak, 3),                 cur: `${streak}/3 ngày` },
+    { n:'Tuần lửa 🔥🔥',       ok: streak >= 7,                 pct: _pct(streak, 7),                 cur: `${streak}/7 ngày` },
+    { n:'Núi lửa 🌋',          ok: streak >= 14,                pct: _pct(streak, 14),                cur: `${streak}/14 ngày` },
+    { n:'Cháy máy ☄️',         ok: streak >= 30,                pct: _pct(streak, 30),                cur: `${streak}/30 ngày` },
+    { n:'Hỏa thần 👑',         ok: streak >= 100,               pct: _pct(streak, 100),               cur: `${streak}/100 ngày` },
+    { n:'Khởi động ⏱️',        ok: studyHours >= 10,            pct: _pct(studyHours, 10),            cur: `${studyHours.toFixed(1)}/10 giờ` },
+    { n:'Chăm học 📚',         ok: studyHours >= 50,            pct: _pct(studyHours, 50),            cur: `${studyHours.toFixed(1)}/50 giờ` },
+    { n:'Học bá 🎓',           ok: studyHours >= 100,           pct: _pct(studyHours, 100),           cur: `${studyHours.toFixed(1)}/100 giờ` },
+    { n:'Máy cày 🤖',          ok: studyHours >= 250,           pct: _pct(studyHours, 250),           cur: `${studyHours.toFixed(1)}/250 giờ` },
+    { n:'Quái vật học tập ☠️', ok: studyHours >= 500,           pct: _pct(studyHours, 500),           cur: `${studyHours.toFixed(1)}/500 giờ` },
+    { n:'Học sinh giỏi ⭐',    ok: points >= 200,               pct: _pct(points, 200),               cur: `${Math.round(points)}/200 điểm` },
+    { n:'Xuất sắc 🌟',         ok: points >= 500,               pct: _pct(points, 500),               cur: `${Math.round(points)}/500 điểm` },
+    { n:'Kim cương 💎',        ok: points >= 1000,              pct: _pct(points, 1000),              cur: `${Math.round(points)}/1.000 điểm` },
+    { n:'Cao thủ 🏆',          ok: points >= 3000,              pct: _pct(points, 3000),              cur: `${Math.round(points)}/3.000 điểm` },
+    { n:'Vô địch 👑',          ok: points >= 5000,              pct: _pct(points, 5000),              cur: `${Math.round(points)}/5.000 điểm` },
+    { n:'Huyền thoại 🔥',      ok: points >= 10000,             pct: _pct(points, 10000),             cur: `${Math.round(points)}/10.000 điểm` },
+    { n:'Cú đêm 🌙',           ok: hasLateNight,                pct: hasLateNight ? 100 : 0,          cur: hasLateNight ? 'Đã đạt' : 'Chưa đạt' },
+    { n:'Dậy sớm ☀️',          ok: hasEarlyBird,                pct: hasEarlyBird ? 100 : 0,          cur: hasEarlyBird ? 'Đã đạt' : 'Chưa đạt' },
+    { n:'Chuyên cần 📅',       ok: streak >= 14,                pct: _pct(streak, 14),                cur: `${streak}/14 ngày` },
+    { n:'Bền bỉ 💪',           ok: longestSessionMinutes >= 180,pct: _pct(longestSessionMinutes, 180),cur: `${Math.round(longestSessionMinutes)}/180 phút` },
+    { n:'Tăng tốc ⚡',         ok: maxDayHours >= 5,            pct: _pct(maxDayHours, 5),            cur: `${maxDayHours.toFixed(1)}/5 giờ` },
+    { n:'Thành viên VIP 💠',   ok: streak >= 30,                pct: _pct(streak, 30),                cur: `${streak}/30 ngày` },
+    { n:'Bá chủ BXH 🥇',      ok: false,                       pct: 0,                               cur: 'Chưa hỗ trợ' },
   ];
   const unlockedNow = defs.filter(x => x.ok).length;
   const totalNow = defs.length;
   const percent = Math.round((unlockedNow / totalNow) * 100);
   defs.push(
-    { n:'Huyền thoại LMS 👑', ok: percent >= 70 },
-    { n:'Truyền thuyết 📜', ok: unlockedNow === totalNow }
+    { n:'Huyền thoại LMS 👑', ok: percent >= 70,              pct: _pct(percent, 70),               cur: `${percent}/70%` },
+    { n:'Truyền thuyết 📜',   ok: unlockedNow === totalNow,   pct: _pct(unlockedNow, totalNow + 2), cur: `${unlockedNow}/${totalNow + 2} huy hiệu` }
   );
   const unlocked = defs.filter(x => x.ok);
-  return { points, streak, studyHours, unlockedCount: unlocked.length, unlockedBadges: unlocked.map(x => x.n) };
+  return { points, streak, studyHours, loginDays, unlockedCount: unlocked.length, unlockedBadges: unlocked.map(x => x.n), allDefs: defs };
 }
 
 // ---- Kiểm tra trùng Gmail / SĐT ----
@@ -3115,8 +3112,11 @@ async function renderCompetitionStats() {
         className: s.class_name || '—',
         points: st.points,
         streak: st.streak,
+        studyHours: st.studyHours,
+        loginDays: st.loginDays,
         unlockedCount: st.unlockedCount,
         unlockedBadges: st.unlockedBadges,
+        allDefs: st.allDefs,
       };
     }).sort((a, b) => b.points - a.points || b.streak - a.streak || b.unlockedCount - a.unlockedCount || a.name.localeCompare(b.name));
 
@@ -3140,7 +3140,21 @@ async function renderCompetitionStats() {
     body.innerHTML = rows.slice(0, 200).map((r, i) => {
       const top = i + 1;
       const medal = top === 1 ? '🥇' : top === 2 ? '🥈' : top === 3 ? '🥉' : `#${top}`;
-      const badgesText = r.unlockedBadges.length ? r.unlockedBadges.slice(0, 3).join(', ') + (r.unlockedBadges.length > 3 ? ', ...' : '') : '—';
+      const badgesText = r.unlockedBadges.length
+        ? r.unlockedBadges.slice(0, 3).join(', ') + (r.unlockedBadges.length > 3 ? ` +${r.unlockedBadges.length - 3}` : '')
+        : '—';
+
+      // Progress bar streak (max 30 ngày để hiển thị)
+      const streakPct = Math.min(100, Math.round((r.streak / 30) * 100));
+      const streakColor = r.streak >= 30 ? '#22c55e' : r.streak >= 7 ? '#f59e0b' : '#6366f1';
+
+      // Progress bar điểm (max 1000 để hiển thị)
+      const pointsPct = Math.min(100, Math.round((r.points / 1000) * 100));
+      const pointsColor = r.points >= 1000 ? '#22c55e' : r.points >= 200 ? '#f59e0b' : '#6366f1';
+
+      // Badge % mở khóa
+      const badgePct = r.allDefs ? Math.round((r.unlockedCount / r.allDefs.length) * 100) : 0;
+
       return `
         <tr>
           <td><b>${medal}</b></td>
@@ -3149,10 +3163,26 @@ async function renderCompetitionStats() {
             <div style="font-size:.78rem;color:var(--muted)">${r.username}</div>
           </td>
           <td>${r.className}</td>
-          <td><b>${Math.round(r.points)}</b></td>
-          <td>${r.streak} ngày</td>
-          <td><b>${r.unlockedCount}</b></td>
-          <td style="max-width:360px;white-space:normal">${badgesText}</td>
+          <td>
+            <div style="font-weight:700;margin-bottom:.25rem">${Math.round(r.points)}</div>
+            <div style="height:5px;background:#e2e8f0;border-radius:999px;width:80px">
+              <div style="height:100%;width:${pointsPct}%;background:${pointsColor};border-radius:999px;transition:width .4s"></div>
+            </div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.15rem">${pointsPct}% / 1k</div>
+          </td>
+          <td>
+            <div style="font-weight:700;margin-bottom:.25rem">${r.streak} ngày</div>
+            <div style="height:5px;background:#e2e8f0;border-radius:999px;width:80px">
+              <div style="height:100%;width:${streakPct}%;background:${streakColor};border-radius:999px;transition:width .4s"></div>
+            </div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.15rem">${streakPct}% / 30 ngày</div>
+          </td>
+          <td>
+            <b>${r.unlockedCount}</b>
+            <span style="font-size:.75rem;color:var(--muted)"> / ${r.allDefs ? r.allDefs.length : '—'}</span>
+            <div style="font-size:.68rem;color:var(--muted)">${badgePct}% mở khóa</div>
+          </td>
+          <td style="max-width:360px;white-space:normal;font-size:.8rem">${badgesText}</td>
         </tr>
       `;
     }).join('');
