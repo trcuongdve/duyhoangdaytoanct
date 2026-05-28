@@ -148,35 +148,28 @@ async function loadMe() {
     banner.innerHTML = `${icon} ${msg}`;
   }
 
-  // Hết hạn tài khoản cá nhân
-  if (data?.expiry_date) {
-    const exp = new Date(data.expiry_date); exp.setHours(0,0,0,0);
-    const daysLeft = Math.round((exp - today) / 86400000);
-    if (daysLeft < 0) {
-      await db.from('students').update({ active: false }).eq('username', currentUser);
-      locked = true;
-    } else if (daysLeft <= WARN_DAYS) {
-      showExpiryBanner(daysLeft, exp.toLocaleDateString('vi-VN'), 'account');
-    }
-  }
-
   // Hết hạn lớp học — kiểm tra tất cả lớp
   if (!locked) {
-    for (const cls of allClsData) {
-      if (!cls.end_date) continue;
-      const end = new Date(cls.end_date); end.setHours(0,0,0,0);
-      const daysLeft = Math.round((end - today) / 86400000);
-      if (daysLeft < 0) {
-        // Chỉ khóa nếu TẤT CẢ lớp đã hết hạn
-        const allExpired = allClsData.every(c => !c.end_date || new Date(c.end_date) < today);
-        if (allExpired) {
-          await db.from('students').update({ active: false }).eq('username', currentUser);
-          locked = true;
-        }
-        break;
-      } else if (daysLeft <= WARN_DAYS) {
-        showExpiryBanner(daysLeft, end.toLocaleDateString('vi-VN'), 'class');
-        break;
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+
+    // Phân loại lớp còn hạn và lớp đã hết hạn
+    const activeCls  = allClsData.filter(c => !c.end_date || new Date(c.end_date) >= today0);
+    const expiredCls = allClsData.filter(c => c.end_date && new Date(c.end_date) < today0);
+
+    if (activeCls.length === 0 && expiredCls.length > 0) {
+      // Tất cả lớp đều hết hạn → khóa tài khoản
+      await db.from('students').update({ active: false }).eq('username', currentUser);
+      locked = true;
+    } else {
+      // Còn ít nhất 1 lớp hợp lệ → chỉ hiện banner nếu lớp sắp hết hạn
+      const soonCls = activeCls
+        .filter(c => c.end_date)
+        .map(c => { const end = new Date(c.end_date); end.setHours(0,0,0,0); return { ...c, daysLeft: Math.round((end - today0) / 86400000) }; })
+        .filter(c => c.daysLeft <= WARN_DAYS)
+        .sort((a,b) => a.daysLeft - b.daysLeft)[0];
+      if (soonCls) {
+        const end = new Date(soonCls.end_date);
+        showExpiryBanner(soonCls.daysLeft, end.toLocaleDateString('vi-VN'), 'class');
       }
     }
   }
@@ -392,20 +385,45 @@ async function renderLessonList(forceRefresh = false) {
   document.getElementById('sLessonListView').style.display = '';
   document.getElementById('sLessonDetailView').style.display = 'none';
 
-  // Chỉ fetch lại khi cần
   if (!_lessonCache || forceRefresh) {
-    let query = db.from('lessons').select('*').order('group_name',{ascending:true}).order('created_at',{ascending:false}).limit(5000);
-    if (myClasses.length === 1) query = query.eq('class_name', myClasses[0]);
-    else if (myClasses.length > 1) query = query.in('class_name', myClasses);
-    const { data: list } = await query;
+    // 1. Fetch tất cả nhóm
+    const { data: allGroups } = await db.from('lesson_groups').select('*').order('name');
 
-    const lessonIds = (list||[]).map(l => l.id);
-    const [{ data: allVids }, { data: allDocs }, { data: allGroups }] = await Promise.all([
+    // 2. Tìm group_id được chia sẻ cho lớp học viên
+    const sharedGroupIds = (allGroups||[])
+      .filter(g => {
+        if (!g.class_name) return false;
+        const gc = g.class_name.split(',').map(c => c.trim()).filter(Boolean);
+        return myClasses.some(mc => gc.includes(mc));
+      })
+      .map(g => g.id);
+
+    // 3. Fetch bài học thuộc lớp học viên
+    let q1 = db.from('lessons').select('*').order('group_name',{ascending:true}).order('created_at',{ascending:false}).limit(5000);
+    if (myClasses.length === 1) q1 = q1.eq('class_name', myClasses[0]);
+    else if (myClasses.length > 1) q1 = q1.in('class_name', myClasses);
+    const { data: ownLessons } = await q1;
+
+    // 4. Fetch bài học thuộc nhóm được chia sẻ (nếu có)
+    let sharedLessons = [];
+    if (sharedGroupIds.length) {
+      const { data: sl } = await db.from('lessons').select('*').in('group_id', sharedGroupIds);
+      sharedLessons = sl || [];
+    }
+
+    // 5. Merge, loại trùng theo id
+    const allIds = new Set((ownLessons||[]).map(l => l.id));
+    const merged = [...(ownLessons||[])];
+    for (const l of sharedLessons) {
+      if (!allIds.has(l.id)) { merged.push(l); allIds.add(l.id); }
+    }
+
+    const lessonIds = merged.map(l => l.id);
+    const [{ data: allVids }, { data: allDocs }] = await Promise.all([
       lessonIds.length ? db.from('lesson_videos').select('lesson_id').in('lesson_id', lessonIds) : { data: [] },
       lessonIds.length ? db.from('lesson_docs').select('lesson_id').in('lesson_id', lessonIds) : { data: [] },
-      db.from('lesson_groups').select('*').order('name'),
     ]);
-    _lessonCache = { list: list||[], allVids: allVids||[], allDocs: allDocs||[], allGroups: allGroups||[] };
+    _lessonCache = { list: merged, allVids: allVids||[], allDocs: allDocs||[], allGroups: allGroups||[] };
   }
 
   renderLessonListFromCache();
@@ -1532,27 +1550,14 @@ setInterval(async () => {
     return;
   }
 
-  // Hết hạn tài khoản cá nhân
-  if (data.expiry_date) {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const exp = new Date(data.expiry_date); exp.setHours(0,0,0,0);
-    if (today > exp) {
-      await db.from('students').update({ active: false }).eq('username', currentUser);
-      alert('Tài khoản của bạn đã hết hạn. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.');
-      await setOffline();
-      sessionStorage.clear();
-      location.href = 'index.html';
-      return;
-    }
-  }
-
-  // Lớp học hết hạn — kiểm tra tất cả lớp
+  // Lớp học hết hạn — chỉ khóa khi TẤT CẢ lớp đều hết hạn
   if (data.class_name && !data.manually_unlocked) {
     const classes = data.class_name.split(',').map(c=>c.trim()).filter(Boolean);
     const { data: clsList } = await db.from('classes').select('name,end_date').in('name', classes);
     const today = new Date(); today.setHours(0,0,0,0);
+    const hasActive = (clsList||[]).some(c => !c.end_date || new Date(c.end_date) >= today);
     const allExpired = (clsList||[]).filter(c=>c.end_date).every(c => new Date(c.end_date) < today);
-    if (allExpired && (clsList||[]).some(c=>c.end_date)) {
+    if (!hasActive && allExpired && (clsList||[]).some(c=>c.end_date)) {
       await db.from('students').update({ active: false }).eq('username', currentUser);
       alert(`Tất cả khóa học đã kết thúc. Tài khoản đã bị khóa. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`);
       await setOffline();
@@ -1649,20 +1654,34 @@ setInterval(async () => {
 
 
 // ── Realtime: thông báo bài học mới ──
+let _lessonReloadTimer = null;
+function _scheduleLessonReload() {
+  _lessonCache = null;
+  clearTimeout(_lessonReloadTimer);
+  _lessonReloadTimer = setTimeout(() => {
+    const lessonPage = document.getElementById('pageLessons');
+    if (lessonPage && lessonPage.classList.contains('active')) renderLessonList(true);
+  }, 800); // chờ 800ms sau event cuối cùng mới render
+}
+
 db.channel('student-new-lesson')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'lessons' }, async (payload) => {
     const lesson = payload.new;
-    // Chỉ hiện nếu bài học thuộc lớp của học viên hoặc không giới hạn lớp
-    if (lesson.class_name && !myClasses.includes(lesson.class_name)) return;
+    if (lesson.class_name && !myClasses.some(mc => lesson.class_name.split(',').map(c=>c.trim()).includes(mc))) return;
     showNewLessonToast(lesson.name);
-    // Reset cache để lần sau vào trang bài học sẽ fetch mới
-    _lessonCache = null;
+    _scheduleLessonReload();
+  })
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lessons' }, async () => {
+    _scheduleLessonReload();
+  })
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lesson_groups' }, async () => {
+    _scheduleLessonReload();
   })
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'lesson_videos' }, async () => {
-    _lessonCache = null; // Reset cache khi có video mới
+    _scheduleLessonReload();
   })
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'lesson_docs' }, async () => {
-    _lessonCache = null;
+    _scheduleLessonReload();
   })
   .subscribe();
 

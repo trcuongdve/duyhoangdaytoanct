@@ -580,9 +580,35 @@ document.getElementById('groupSaveBtn').addEventListener('click', async () => {
   const cls = _groupSelectedClasses.length ? _groupSelectedClasses.join(',') : null;
   const err = document.getElementById('groupError');
   if (!name) { err.textContent = 'Vui lòng nhập tên nhóm.'; return; }
+
   if (editingGroupId) {
+    // Lấy class_name cũ của nhóm để tính lớp mới được thêm
+    const { data: oldGroup } = await db.from('lesson_groups').select('class_name').eq('id', editingGroupId).single();
+    const oldClasses = (oldGroup?.class_name||'').split(',').map(c=>c.trim()).filter(Boolean);
+    const newClasses = _groupSelectedClasses;
+    const addedClasses = newClasses.filter(c => !oldClasses.includes(c)); // lớp mới được thêm vào
+
     await db.from('lesson_groups').update({ name, class_name: cls }).eq('id', editingGroupId);
     if (oldName && oldName !== name) await db.from('lessons').update({ group_name: name }).eq('group_name', oldName);
+
+    // Với mỗi lớp mới được thêm → cập nhật tất cả bài học trong nhóm
+    if (addedClasses.length) {
+      // Fetch bài học theo group_id VÀ group_name (hỗ trợ dữ liệu cũ)
+      const [{ data: byId }, { data: byName }] = await Promise.all([
+        db.from('lessons').select('id,class_name').eq('group_id', editingGroupId),
+        name ? db.from('lessons').select('id,class_name').eq('group_name', name) : { data: [] },
+      ]);
+      // Merge, loại trùng
+      const allLessons = [...(byId||[])];
+      const seenIds = new Set(allLessons.map(l => l.id));
+      for (const l of (byName||[])) { if (!seenIds.has(l.id)) allLessons.push(l); }
+
+      for (const lesson of allLessons) {
+        const existingCls = (lesson.class_name||'').split(',').map(c=>c.trim()).filter(Boolean);
+        const merged = [...new Set([...existingCls, ...addedClasses])];
+        await db.from('lessons').update({ class_name: merged.join(',') }).eq('id', lesson.id);
+      }
+    }
   } else {
     const { error } = await db.from('lesson_groups').insert({
       name,
@@ -2349,10 +2375,21 @@ async function renderClasses() {
     card.querySelector('[data-edit]').addEventListener('click', e=>{ e.stopPropagation(); openEditClassModal(cls, info); });
     card.querySelector('[data-del]').addEventListener('click', async e=>{
       e.stopPropagation();
-      showConfirm(`Xóa lớp "${cls}"? Học sinh trong lớp sẽ không bị xóa.`, async () => {
-        await db.from('classes').delete().eq('name',cls);
-        await db.from('students').update({class_name:''}).eq('class_name',cls);
-        renderClasses(); populateClassFilters();
+      showConfirm(`Xóa lớp "${cls}"? Học sinh trong lớp sẽ bị gỡ khỏi lớp này.`, async () => {
+        // 1. Xóa lớp khỏi bảng classes
+        await db.from('classes').delete().eq('name', cls);
+
+        // 2. Xóa khỏi student_classes
+        await db.from('student_classes').delete().eq('class_name', cls);
+
+        // 3. Cập nhật students.class_name — xử lý cả lớp đơn và comma-separated
+        const { data: affected } = await db.from('students').select('id,class_name').ilike('class_name', `%${cls}%`);
+        for (const s of (affected||[])) {
+          const classes = (s.class_name||'').split(',').map(c=>c.trim()).filter(c=>c && c!==cls);
+          await db.from('students').update({ class_name: classes.join(',') || null }).eq('id', s.id);
+        }
+
+        renderClasses(); populateClassFilters(); renderStudents();
       });
     });
     grid.appendChild(card);
@@ -2440,7 +2477,16 @@ document.getElementById('editClassSaveBtn').addEventListener('click', async ()=>
   } else {
     await db.from('classes').upsert({name:newName, start_date:start, end_date:end});
     await db.from('classes').delete().eq('name',editingClassName);
-    await db.from('students').update({class_name:newName}).eq('class_name',editingClassName);
+
+    // Cập nhật student_classes
+    await db.from('student_classes').update({ class_name: newName }).eq('class_name', editingClassName);
+
+    // Cập nhật students.class_name — xử lý cả lớp đơn và comma-separated
+    const { data: affected } = await db.from('students').select('id,class_name').ilike('class_name', `%${editingClassName}%`);
+    for (const s of (affected||[])) {
+      const classes = (s.class_name||'').split(',').map(c=>c.trim()).map(c => c===editingClassName ? newName : c).filter(Boolean);
+      await db.from('students').update({ class_name: classes.join(',') }).eq('id', s.id);
+    }
   }
   // Đồng bộ expiry_date cho tất cả học viên trong lớp (chỉ những ai chưa có expiry riêng hoặc expiry = end_date cũ)
   if (end) {

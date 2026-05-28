@@ -550,19 +550,8 @@
                 if (today > endDate) { resetLoading(`Khóa học "${student.class_name}" đã kết thúc vào ngày ${endDate.toLocaleDateString('vi-VN')}. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`); return; }
               }
             }
-            if (student.expiry_date) { resetLoading(`Tài khoản đã hết hạn vào ngày ${new Date(student.expiry_date).toLocaleDateString('vi-VN')}. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`); return; }
             resetLoading('Tài khoản đã bị khóa. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.');
             return;
-          }
-
-          if (student.expiry_date) {
-            const today = new Date(); today.setHours(0,0,0,0);
-            const expiry = new Date(student.expiry_date); expiry.setHours(0,0,0,0);
-            if (today > expiry) {
-              if (student.active) await db.from('students').update({ active: false }).eq('id', student.id);
-              resetLoading(`Tài khoản đã hết hạn vào ngày ${expiry.toLocaleDateString('vi-VN')}. trợ lý và giáo viên ko hổ trợ duy trì tài khoản.`);
-              return;
-            }
           }
 
           if (student.class_name && !student.manually_unlocked) {
