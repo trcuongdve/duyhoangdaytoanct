@@ -1,4 +1,4 @@
-﻿﻿﻿//// Khởi tạo Supabase client (CDN đã load sẵn qua script tag)
+﻿//// Khởi tạo Supabase client (CDN đã load sẵn qua script tag)
 const db = supabase.createClient(
   'https://gojpmogjretoxplydjvg.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvanBtb2dqcmV0b3hwbHlkanZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0Nzg4ODEsImV4cCI6MjA5MzA1NDg4MX0.iLCNd2VRMiZoFp6_KclZlFsOenUNoM041tl1fobHKDA'
@@ -36,6 +36,136 @@ async function decryptUrl(enc) {
     const dec = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, data);
     return new TextDecoder().decode(dec);
   } catch { return enc; }
+}
+
+// ---- Thi đua học viên (điểm/huy chương/top) ----
+const POINTS_PER_LESSON_VIEW = 20;
+const POINTS_PER_ACCESS_LOG = 5;
+const POINTS_PER_ACTIVE_DAY = 10;
+
+function _toDateKey(ts) {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function _calcCurrentStreak(dateKeys) {
+  if (!dateKeys.length) return 0;
+  const set = new Set(dateKeys);
+  const now = new Date(); now.setHours(0,0,0,0);
+  const today = _toDateKey(now.toISOString());
+  const y = new Date(now); y.setDate(y.getDate() - 1);
+  const yKey = _toDateKey(y.toISOString());
+  if (!set.has(today) && !set.has(yKey)) return 0;
+  let streak = 0;
+  const cur = set.has(today) ? now : y;
+  while (true) {
+    const k = _toDateKey(cur.toISOString());
+    if (!set.has(k)) break;
+    streak++;
+    cur.setDate(cur.getDate() - 1);
+  }
+  return streak;
+}
+
+function _buildCompetitionStats({ loginLogs = [], accessLogs = [], lessonViews = [] }) {
+  // Theo yêu cầu: ép mọi chỉ số về 0.
+  const FORCE_ZERO = true;
+  if (FORCE_ZERO) {
+    return { points: 0, streak: 0, studyHours: 0, unlockedCount: 0, unlockedBadges: [] };
+  }
+
+  const allDateKeys = [...new Set([
+    ...loginLogs.map(x => _toDateKey(x.logged_in_at)),
+    ...accessLogs.map(x => _toDateKey(x.accessed_at)),
+    ...lessonViews.map(x => _toDateKey(x.viewed_at)),
+  ].filter(Boolean))].sort();
+  const loginDays = allDateKeys.length;
+  const streak = _calcCurrentStreak(allDateKeys);
+
+  const accessTimes = accessLogs
+    .map(x => new Date(x.accessed_at).getTime())
+    .filter(x => !Number.isNaN(x))
+    .sort((a, b) => a - b);
+  let totalMinutes = 0;
+  let longestSessionMinutes = 0;
+  const perDayMinutes = {};
+  let sessionStart = null;
+  let prev = null;
+  for (const t of accessTimes) {
+    if (sessionStart === null) { sessionStart = t; prev = t; continue; }
+    const gapMin = (t - prev) / 60000;
+    if (gapMin <= 20) prev = t;
+    else {
+      const mins = Math.max(6, (prev - sessionStart) / 60000 + 6);
+      totalMinutes += mins;
+      longestSessionMinutes = Math.max(longestSessionMinutes, mins);
+      const dayKey = _toDateKey(new Date(sessionStart).toISOString());
+      perDayMinutes[dayKey] = (perDayMinutes[dayKey] || 0) + mins;
+      sessionStart = t; prev = t;
+    }
+  }
+  if (sessionStart !== null && prev !== null) {
+    const mins = Math.max(6, (prev - sessionStart) / 60000 + 6);
+    totalMinutes += mins;
+    longestSessionMinutes = Math.max(longestSessionMinutes, mins);
+    const dayKey = _toDateKey(new Date(sessionStart).toISOString());
+    perDayMinutes[dayKey] = (perDayMinutes[dayKey] || 0) + mins;
+  }
+  const studyHours = totalMinutes / 60;
+  const maxDayHours = Math.max(0, ...Object.values(perDayMinutes).map(m => m / 60));
+
+  const allTimeSamples = [
+    ...loginLogs.map(x => new Date(x.logged_in_at)).filter(x => !Number.isNaN(x.getTime())),
+    ...accessLogs.map(x => new Date(x.accessed_at)).filter(x => !Number.isNaN(x.getTime())),
+  ];
+  const hasLateNight = allTimeSamples.some(d => d.getHours() >= 23);
+  const hasEarlyBird = allTimeSamples.some(d => d.getHours() < 6);
+
+  const points = Math.round(
+    (lessonViews.length * POINTS_PER_LESSON_VIEW) +
+    (accessLogs.length * POINTS_PER_ACCESS_LOG) +
+    (loginDays * POINTS_PER_ACTIVE_DAY)
+  );
+
+  const defs = [
+    { n:'Mầm non 🌱', ok: points >= 50 },
+    { n:'Khởi đầu 🚀', ok: studyHours >= 1 },
+    { n:'Chăm chỉ 📘', ok: studyHours >= 5 },
+    { n:'Siêng năng ✨', ok: loginDays >= 7 },
+    { n:'Bắt đầu bùng 🔥', ok: streak >= 3 },
+    { n:'Tuần lửa 🔥🔥', ok: streak >= 7 },
+    { n:'Núi lửa 🌋', ok: streak >= 14 },
+    { n:'Cháy máy ☄️', ok: streak >= 30 },
+    { n:'Hỏa thần 👑', ok: streak >= 100 },
+    { n:'Khởi động ⏱️', ok: studyHours >= 10 },
+    { n:'Chăm học 📚', ok: studyHours >= 50 },
+    { n:'Học bá 🎓', ok: studyHours >= 100 },
+    { n:'Máy cày 🤖', ok: studyHours >= 250 },
+    { n:'Quái vật học tập ☠️', ok: studyHours >= 500 },
+    { n:'Học sinh giỏi ⭐', ok: points >= 200 },
+    { n:'Xuất sắc 🌟', ok: points >= 500 },
+    { n:'Kim cương 💎', ok: points >= 1000 },
+    { n:'Cao thủ 🏆', ok: points >= 3000 },
+    { n:'Vô địch 👑', ok: points >= 5000 },
+    { n:'Huyền thoại 🔥', ok: points >= 10000 },
+    { n:'Cú đêm 🌙', ok: hasLateNight },
+    { n:'Dậy sớm ☀️', ok: hasEarlyBird },
+    { n:'Chuyên cần 📅', ok: streak >= 14 },
+    { n:'Bền bỉ 💪', ok: longestSessionMinutes >= 180 },
+    { n:'Tăng tốc ⚡', ok: maxDayHours >= 5 },
+    { n:'Thành viên VIP 💠', ok: streak >= 30 },
+    { n:'Bá chủ BXH 🥇', ok: false },
+  ];
+  const unlockedNow = defs.filter(x => x.ok).length;
+  const totalNow = defs.length;
+  const percent = Math.round((unlockedNow / totalNow) * 100);
+  defs.push(
+    { n:'Huyền thoại LMS 👑', ok: percent >= 70 },
+    { n:'Truyền thuyết 📜', ok: unlockedNow === totalNow }
+  );
+  const unlocked = defs.filter(x => x.ok);
+  return { points, streak, studyHours, unlockedCount: unlocked.length, unlockedBadges: unlocked.map(x => x.n) };
 }
 
 // ---- Kiểm tra trùng Gmail / SĐT ----
@@ -291,6 +421,7 @@ function showPage(name) {
   }
   if (name === 'devices')        renderDeviceAlerts();
   if (name === 'access-stats')   renderAccessStats();
+  if (name === 'competition')    renderCompetitionStats();
   if (name === 'login-history')  renderLoginHistory();
   if (name === 'announcements')  { populateClassFilters(); renderAnnouncements(); }
   if (name === 'classes')        renderClasses();
@@ -301,6 +432,10 @@ document.querySelectorAll('.slink[data-page]').forEach(l => {
 });
 document.querySelectorAll('[data-goto]').forEach(l => {
   l.addEventListener('click', e => { e.preventDefault(); showPage(l.dataset.goto); });
+});
+document.getElementById('refreshCompetitionBtn')?.addEventListener('click', () => renderCompetitionStats());
+document.getElementById('competitionSearch')?.addEventListener('input', () => {
+  if (document.getElementById('pageCompetition')?.classList.contains('active')) renderCompetitionStats();
 });
 
 // ---- Class filters ----
@@ -582,32 +717,16 @@ document.getElementById('groupSaveBtn').addEventListener('click', async () => {
   if (!name) { err.textContent = 'Vui lòng nhập tên nhóm.'; return; }
 
   if (editingGroupId) {
-    // Lấy class_name cũ của nhóm để tính lớp mới được thêm
-    const { data: oldGroup } = await db.from('lesson_groups').select('class_name').eq('id', editingGroupId).single();
-    const oldClasses = (oldGroup?.class_name||'').split(',').map(c=>c.trim()).filter(Boolean);
-    const newClasses = _groupSelectedClasses;
-    const addedClasses = newClasses.filter(c => !oldClasses.includes(c)); // lớp mới được thêm vào
-
     await db.from('lesson_groups').update({ name, class_name: cls }).eq('id', editingGroupId);
     if (oldName && oldName !== name) await db.from('lessons').update({ group_name: name }).eq('group_name', oldName);
-
-    // Với mỗi lớp mới được thêm → cập nhật tất cả bài học trong nhóm
-    if (addedClasses.length) {
-      // Fetch bài học theo group_id VÀ group_name (hỗ trợ dữ liệu cũ)
-      const [{ data: byId }, { data: byName }] = await Promise.all([
-        db.from('lessons').select('id,class_name').eq('group_id', editingGroupId),
-        name ? db.from('lessons').select('id,class_name').eq('group_name', name) : { data: [] },
-      ]);
-      // Merge, loại trùng
-      const allLessons = [...(byId||[])];
-      const seenIds = new Set(allLessons.map(l => l.id));
-      for (const l of (byName||[])) { if (!seenIds.has(l.id)) allLessons.push(l); }
-
-      for (const lesson of allLessons) {
-        const existingCls = (lesson.class_name||'').split(',').map(c=>c.trim()).filter(Boolean);
-        const merged = [...new Set([...existingCls, ...addedClasses])];
-        await db.from('lessons').update({ class_name: merged.join(',') }).eq('id', lesson.id);
-      }
+    // Đồng bộ toàn bộ bài học trong nhóm theo class_name mới của nhóm
+    const [{ data: byId }, { data: byName }] = await Promise.all([
+      db.from('lessons').select('id').eq('group_id', editingGroupId),
+      name ? db.from('lessons').select('id').eq('group_name', name) : { data: [] },
+    ]);
+    const allLessonIds = [...new Set([...(byId||[]), ...(byName||[])].map(l => l.id))];
+    for (const lessonId of allLessonIds) {
+      await db.from('lessons').update({ class_name: cls }).eq('id', lessonId);
     }
   } else {
     const { error } = await db.from('lesson_groups').insert({
@@ -1934,7 +2053,6 @@ function openLessonModal(l=null) {
     document.getElementById('lInlineDocLinks').value = '';
     document.getElementById('lInlineHwLinks').value = '';
   }
-  populateClassFilters().then(() => { document.getElementById('lClassSelect').value = l ? (l.class_name||'') : ''; });
   // Truyền group_id nếu có, fallback group_name cũ
   populateGroupSelect('lGroupInput', l ? (l.group_id || l.group_name || '') : '');
   document.getElementById('lessonModal').classList.add('open');
@@ -1944,12 +2062,14 @@ document.getElementById('lCancelBtn').addEventListener('click', () => document.g
 document.getElementById('lSaveBtn').addEventListener('click', async () => {
   const name = document.getElementById('lNameInput').value.trim(), err = document.getElementById('lError');
   if (!name) { err.textContent = 'Vui lòng nhập tên bài học.'; return; }
-  const cls   = document.getElementById('lClassSelect').value;
   const desc  = document.getElementById('lDescInput').value.trim();
   const groupId = document.getElementById('lGroupInput').value || null;
-  // Lấy tên nhóm để backward compat
-  const { data: grpData } = groupId ? await db.from('lesson_groups').select('name').eq('id', groupId).single() : { data: null };
+  // Lấy tên nhóm + lớp của nhóm để tự đồng bộ class_name cho bài học
+  const { data: grpData } = groupId
+    ? await db.from('lesson_groups').select('name,class_name').eq('id', groupId).single()
+    : { data: null };
   const groupName = grpData ? grpData.name : null;
+  const cls = grpData ? (grpData.class_name || null) : null;
 
   const btn = document.getElementById('lSaveBtn');
   btn.textContent = 'Đang lưu...'; btn.disabled = true;
@@ -2603,7 +2723,7 @@ document.getElementById('clearAlertsBtn').addEventListener('click', async ()=>{
 });
 
 // ---- Init ----
-const _validPages = ['overview','lessons','lesson-groups','create-student','students','classes','security','devices','access-stats','login-history','announcements','schedule','profile'];
+const _validPages = ['overview','lessons','lesson-groups','create-student','students','classes','security','devices','access-stats','competition','login-history','announcements','schedule','profile'];
 const _savedPage = sessionStorage.getItem('dh_page');
 populateClassFilters().then(() => {
   showPage(_validPages.includes(_savedPage) ? _savedPage : 'overview');
@@ -2953,6 +3073,94 @@ db.channel('realtime-access-logs')
 // ============================================================
 // THỐNG KÊ TRUY CẬP
 // ============================================================
+async function renderCompetitionStats() {
+  const body = document.getElementById('competitionBody');
+  const empty = document.getElementById('emptyCompetition');
+  if (!body || !empty) return;
+
+  body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">Đang tải dữ liệu thi đua...</td></tr>';
+  empty.style.display = 'none';
+  try {
+    const { data: students } = await db
+      .from('students')
+      .select('username,full_name,class_name,active')
+      .eq('active', true)
+      .order('full_name')
+      .limit(10000);
+    const list = (students || []).filter(s => !!s.username);
+    const usernames = list.map(s => s.username);
+    if (!usernames.length) {
+      body.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    const [{ data: lg }, { data: ac }, { data: lv }] = await Promise.all([
+      db.from('login_logs').select('username,logged_in_at').in('username', usernames).order('logged_in_at', { ascending: true }).limit(100000),
+      db.from('access_logs').select('username,accessed_at').in('username', usernames).order('accessed_at', { ascending: true }).limit(200000),
+      db.from('lesson_views').select('username,viewed_at').in('username', usernames).order('viewed_at', { ascending: true }).limit(200000),
+    ]);
+
+    const bucket = {};
+    usernames.forEach(u => { bucket[u] = { loginLogs: [], accessLogs: [], lessonViews: [] }; });
+    (lg || []).forEach(x => { if (bucket[x.username]) bucket[x.username].loginLogs.push(x); });
+    (ac || []).forEach(x => { if (bucket[x.username]) bucket[x.username].accessLogs.push(x); });
+    (lv || []).forEach(x => { if (bucket[x.username]) bucket[x.username].lessonViews.push(x); });
+
+    let rows = list.map(s => {
+      const logs = bucket[s.username] || { loginLogs: [], accessLogs: [], lessonViews: [] };
+      const st = _buildCompetitionStats(logs);
+      return {
+        username: s.username,
+        name: s.full_name || s.username,
+        className: s.class_name || '—',
+        points: st.points,
+        streak: st.streak,
+        unlockedCount: st.unlockedCount,
+        unlockedBadges: st.unlockedBadges,
+      };
+    }).sort((a, b) => b.points - a.points || b.streak - a.streak || b.unlockedCount - a.unlockedCount || a.name.localeCompare(b.name));
+
+    const q = (document.getElementById('competitionSearch')?.value || '').trim().toLowerCase();
+    if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || r.username.toLowerCase().includes(q));
+
+    if (!rows.length) {
+      body.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const top1 = rows[0];
+    document.getElementById('compStatStudents').textContent = String(rows.length);
+    document.getElementById('compStatTop1').textContent = top1 ? (top1.name.length > 12 ? top1.name.slice(0, 12) + '…' : top1.name) : '—';
+    document.getElementById('compStatTopPoints').textContent = String(Math.round(top1?.points || 0));
+    const avgBadges = rows.reduce((s, r) => s + r.unlockedCount, 0) / Math.max(1, rows.length);
+    document.getElementById('compStatAvgBadges').textContent = avgBadges.toFixed(1);
+
+    body.innerHTML = rows.slice(0, 200).map((r, i) => {
+      const top = i + 1;
+      const medal = top === 1 ? '🥇' : top === 2 ? '🥈' : top === 3 ? '🥉' : `#${top}`;
+      const badgesText = r.unlockedBadges.length ? r.unlockedBadges.slice(0, 3).join(', ') + (r.unlockedBadges.length > 3 ? ', ...' : '') : '—';
+      return `
+        <tr>
+          <td><b>${medal}</b></td>
+          <td>
+            <div style="font-weight:700">${r.name}</div>
+            <div style="font-size:.78rem;color:var(--muted)">${r.username}</div>
+          </td>
+          <td>${r.className}</td>
+          <td><b>${Math.round(r.points)}</b></td>
+          <td>${r.streak} ngày</td>
+          <td><b>${r.unlockedCount}</b></td>
+          <td style="max-width:360px;white-space:normal">${badgesText}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--danger)">Không tải được dữ liệu thi đua.</td></tr>';
+  }
+}
+
 async function renderAccessStats() {
   const cls    = document.getElementById('accessFilterClass').value;
   const type   = document.getElementById('accessFilterType').value;
