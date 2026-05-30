@@ -259,3 +259,18 @@ alter publication supabase_realtime add table students;
 -- Đảm bảo các bảng khác cũng được bật Realtime
 alter publication supabase_realtime add table announcements;
 alter publication supabase_realtime add table app_settings;
+
+-- ============================================================
+-- Bảng quà điểm hằng ngày
+-- ============================================================
+create table if not exists daily_rewards (
+  id         bigint generated always as identity primary key,
+  username   text not null,
+  reward_date date not null,
+  points     int not null default 10,
+  streak_day int not null default 1,
+  created_at timestamptz default now(),
+  unique(username, reward_date)
+);
+alter table daily_rewards disable row level security;
+alter publication supabase_realtime add table daily_rewards;

@@ -936,6 +936,56 @@
   <div style="text-align:center;padding:.6rem;font-size:.75rem;color:rgba(255,255,255,.5);background:transparent;letter-spacing:.5px">
     by.trcuong
   </div>
+
+  <!-- THÔNG BÁO KẾT THÚC VSAT ĐỢT 5 — hiện 1 lần/ngày ở trang đăng nhập -->
+  <div id="vsatNoticeOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)">
+    <div style="background:#fff;border-radius:18px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.4)">
+      <div style="background:linear-gradient(135deg,#1e1b4b,#4338ca);border-radius:18px 18px 0 0;padding:1.25rem 1.5rem;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.4rem">🚨</div>
+        <div style="color:#fff;font-weight:900;font-size:1.05rem;line-height:1.4">THÔNG BÁO KẾT THÚC HỆ THỐNG<br/>VSAT ĐỢT 5</div>
+      </div>
+      <div style="padding:1.25rem 1.5rem;font-size:.88rem;color:#1e293b;line-height:1.75">
+        <p>Hiện tại tài khoản VSAT Đợt 5 chỉ còn khoảng 5 ngày hoạt động và sẽ chính thức đóng toàn bộ hệ thống vào sáng ngày <b>01/06/2026</b>.</p>
+        <p>Sau thời gian trên, hệ thống sẽ ngừng truy cập và bên mình <b>KHÔNG hỗ trợ mở lại, gia hạn hay duy trì tài khoản</b> dưới bất kỳ hình thức nào như đã thông báo từ đầu khóa.</p>
+        <p style="font-weight:700;margin-top:1rem">Một số trường hợp thường gặp:</p>
+        <ul style="margin:.3rem 0 .3rem 1.2rem;padding:0">
+          <li>Thi sau ngày 01/06/2026</li><li>Thi các trường có lịch thi muộn hơn</li>
+          <li>Chưa học hết bài trong web</li><li>Chưa xem hết record/bài giảng</li>
+          <li>Muốn xin thêm thời gian ôn tập</li>
+        </ul>
+        <p style="color:#4338ca;font-weight:700">➡️ Tất cả các trường hợp trên đều xin phép từ chối hỗ trợ.</p>
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:.75rem 1rem;margin-top:.75rem">
+          <p style="font-weight:700;color:#166534;margin:0 0 .4rem">📌 HỌC VIÊN ĐƯỢC PHÉP LƯU:</p>
+          <ul style="margin:.2rem 0 0 1.2rem;padding:0;color:#166534"><li>BVT</li><li>Các tài liệu được cho phép tải xuống trên hệ thống</li></ul>
+        </div>
+        <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:.75rem 1rem;margin-top:.75rem">
+          <p style="font-weight:700;color:#991b1b;margin:0 0 .4rem">❌ KHÔNG hỗ trợ lưu:</p>
+          <ul style="margin:.2rem 0 0 1.2rem;padding:0;color:#991b1b"><li>Record bài giảng</li><li>Video trên hệ thống</li><li>Nội dung độc quyền thuộc nền tảng học tập</li></ul>
+        </div>
+        <p style="margin-top:.75rem;font-size:.82rem;color:#64748b">Mọi record/video đều thuộc quyền sở hữu của hệ thống và sẽ bị khóa hoàn toàn sau thời gian kết thúc khóa học.</p>
+        <p style="font-weight:700;margin-top:.75rem">Vui lòng chủ động:</p>
+        <ul style="margin:.3rem 0 .3rem 1.2rem;padding:0"><li>Hoàn thành tiến độ học</li><li>Xem hết record cần thiết</li><li>Lưu các tài liệu quan trọng trước thời gian đóng hệ thống</li></ul>
+        <p style="text-align:center;margin-top:1rem;color:#4338ca;font-weight:700">Xin cảm ơn tất cả học viên đã đồng hành cùng VSAT Đợt 5 trong suốt thời gian vừa qua ❤️</p>
+      </div>
+      <div style="padding:.75rem 1.5rem 1.25rem;text-align:center">
+        <button id="vsatNoticeCloseBtn" style="background:linear-gradient(135deg,#6366f1,#4338ca);color:#fff;border:none;padding:.75rem 2.5rem;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;width:100%">Đã hiểu ✓</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const EXPIRE = new Date('2026-06-01T00:00:00');
+      const today  = new Date().toISOString().split('T')[0];
+      const seen   = localStorage.getItem('vsat5_notice_seen');
+      if (new Date() < EXPIRE && seen !== today) {
+        document.getElementById('vsatNoticeOverlay').style.display = 'flex';
+        document.getElementById('vsatNoticeCloseBtn').addEventListener('click', function() {
+          localStorage.setItem('vsat5_notice_seen', today);
+          document.getElementById('vsatNoticeOverlay').style.display = 'none';
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
 

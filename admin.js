@@ -314,23 +314,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ---- Custom confirm popup ----
-function showConfirm(message, onOk, { title='Xác nhận xóa', icon='🗑', okText='Xóa' } = {}) {
+function showConfirm(message, onOk, { title='Xác nhận xóa', icon='🗑', okText='Xóa', cancelText='Hủy', onCancel=null } = {}) {
   document.getElementById('confirmIcon').textContent = icon;
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMessage').textContent = message;
   document.getElementById('confirmOkBtn').textContent = okText;
+  const cancelBtn = document.getElementById('confirmCancelBtn');
+  cancelBtn.textContent = cancelText;
   document.getElementById('confirmModal').classList.add('open');
   const ok = document.getElementById('confirmOkBtn');
   const cancel = document.getElementById('confirmCancelBtn');
   const close = () => {
     document.getElementById('confirmModal').classList.remove('open');
     ok.replaceWith(ok.cloneNode(true));
-    cancel.replaceWith(cancel.cloneNode(true));
-    // re-bind cancel on new node
-    document.getElementById('confirmCancelBtn').addEventListener('click', () => document.getElementById('confirmModal').classList.remove('open'));
+    const newCancel = cancel.cloneNode(true);
+    cancel.replaceWith(newCancel);
+    newCancel.textContent = 'Hủy';
+    newCancel.addEventListener('click', () => document.getElementById('confirmModal').classList.remove('open'));
   };
   ok.addEventListener('click', () => { close(); onOk(); }, { once: true });
-  cancel.addEventListener('click', close, { once: true });
+  cancel.addEventListener('click', () => {
+    close();
+    if (onCancel) onCancel();
+  }, { once: true });
 }
 document.getElementById('confirmCancelBtn').addEventListener('click', () => document.getElementById('confirmModal').classList.remove('open'));
 
@@ -823,10 +829,31 @@ async function renderOverview() {
     db.from('lesson_videos').select('*', { count:'exact', head:true }),
     db.from('lesson_docs').select('*', { count:'exact', head:true }),
   ]);
-  animateCount(document.getElementById('statExams'),    docCount || 0);
-  animateCount(document.getElementById('statVideos'),   vidCount || 0);
-  animateCount(document.getElementById('statStudents'), sc || 0);
-  animateCount(document.getElementById('statAlerts'),   alertCount || 0);
+
+  // Nếu count trả về null → fetch lại thủ công
+  let realSc = sc, realVid = vidCount, realDoc = docCount;
+  if (realSc === null || realSc === undefined) {
+    const { data: sd } = await db.from('students').select('id');
+    realSc = (sd||[]).length;
+  }
+  if (realVid === null || realVid === undefined) {
+    const { data: vd } = await db.from('lesson_videos').select('id');
+    realVid = (vd||[]).length;
+  }
+  if (realDoc === null || realDoc === undefined) {
+    const { data: dd } = await db.from('lesson_docs').select('id');
+    realDoc = (dd||[]).length;
+  }
+
+  // Force set trước rồi animate để tránh bị skip khi start === target
+  const elExams    = document.getElementById('statExams');
+  const elVideos   = document.getElementById('statVideos');
+  const elStudents = document.getElementById('statStudents');
+  const elAlerts   = document.getElementById('statAlerts');
+  if (elExams)    { elExams.textContent    = ''; animateCount(elExams,    realDoc        || 0); }
+  if (elVideos)   { elVideos.textContent   = ''; animateCount(elVideos,   realVid        || 0); }
+  if (elStudents) { elStudents.textContent = ''; animateCount(elStudents, realSc         || 0); }
+  if (elAlerts)   { elAlerts.textContent   = ''; animateCount(elAlerts,   alertCount     || 0); }
 
   const re = document.getElementById('recentExams');
   re.innerHTML = (recentLessons||[]).map(l =>
@@ -2492,22 +2519,53 @@ async function renderClasses() {
     card.querySelector('[data-edit]').addEventListener('click', e=>{ e.stopPropagation(); openEditClassModal(cls, info); });
     card.querySelector('[data-del]').addEventListener('click', async e=>{
       e.stopPropagation();
-      showConfirm(`Xóa lớp "${cls}"? Học sinh trong lớp sẽ bị gỡ khỏi lớp này.`, async () => {
-        // 1. Xóa lớp khỏi bảng classes
-        await db.from('classes').delete().eq('name', cls);
+      // Đếm học sinh trong lớp
+      const { data: scList } = await db.from('student_classes').select('student_id').eq('class_name', cls);
+      const scIds = (scList||[]).map(s => s.student_id);
+      const { data: directStudents } = await db.from('students').select('id').ilike('class_name', `%${cls}%`);
+      const allIds = [...new Set([...scIds, ...(directStudents||[]).map(s=>s.id)])];
+      const studentCount = allIds.length;
 
-        // 2. Xóa khỏi student_classes
-        await db.from('student_classes').delete().eq('class_name', cls);
+      const msg = studentCount > 0
+        ? `Xóa lớp "${cls}"?\n\nLớp này có ${studentCount} học sinh. Chọn hành động:`
+        : `Xóa lớp "${cls}"? Lớp này không có học sinh.`;
 
-        // 3. Cập nhật students.class_name — xử lý cả lớp đơn và comma-separated
-        const { data: affected } = await db.from('students').select('id,class_name').ilike('class_name', `%${cls}%`);
-        for (const s of (affected||[])) {
-          const classes = (s.class_name||'').split(',').map(c=>c.trim()).filter(c=>c && c!==cls);
-          await db.from('students').update({ class_name: classes.join(',') || null }).eq('id', s.id);
-        }
-
-        renderClasses(); populateClassFilters(); renderStudents();
-      });
+      if (studentCount > 0) {
+        // Hiện confirm với 2 lựa chọn
+        showConfirm(
+          `Lớp "${cls}" có ${studentCount} học sinh. Bạn muốn xóa học sinh luôn hay chỉ gỡ khỏi lớp?`,
+          async () => {
+            // Xóa luôn tất cả học sinh trong lớp
+            if (allIds.length) await db.from('students').delete().in('id', allIds);
+            await db.from('classes').delete().eq('name', cls);
+            await db.from('student_classes').delete().eq('class_name', cls);
+            renderClasses(); populateClassFilters(); renderStudents(); renderOverview();
+          },
+          {
+            title: `🗑 Xóa lớp "${cls}"`,
+            icon: '⚠️',
+            okText: `🗑 Xóa ${studentCount} học sinh luôn`,
+            cancelText: '👤 Chỉ gỡ khỏi lớp',
+            onCancel: async () => {
+              // Chỉ gỡ học sinh khỏi lớp, không xóa
+              await db.from('classes').delete().eq('name', cls);
+              await db.from('student_classes').delete().eq('class_name', cls);
+              const { data: affected } = await db.from('students').select('id,class_name').ilike('class_name', `%${cls}%`);
+              for (const s of (affected||[])) {
+                const classes = (s.class_name||'').split(',').map(c=>c.trim()).filter(c=>c && c!==cls);
+                await db.from('students').update({ class_name: classes.join(',') || null }).eq('id', s.id);
+              }
+              renderClasses(); populateClassFilters(); renderStudents();
+            }
+          }
+        );
+      } else {
+        showConfirm(`Xóa lớp "${cls}"? Lớp này không có học sinh.`, async () => {
+          await db.from('classes').delete().eq('name', cls);
+          await db.from('student_classes').delete().eq('class_name', cls);
+          renderClasses(); populateClassFilters();
+        });
+      }
     });
     grid.appendChild(card);
   });

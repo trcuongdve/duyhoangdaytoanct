@@ -73,8 +73,9 @@ let myClasses = []; // Hỗ trợ nhiều lớp — load từ student_classes
 const POINTS_PER_LESSON_VIEW = 20;
 const POINTS_PER_ACCESS_LOG = 5;
 const POINTS_PER_ACTIVE_DAY = 10;
+const POINTS_PER_STUDY_HOUR = 30; // +30 điểm mỗi giờ học
 // Mốc mở thi đua: trước giờ này sẽ chưa tính gì.
-const COMPETITION_LAUNCH_AT = new Date('2026-05-28T13:00:00+07:00');
+const COMPETITION_LAUNCH_AT = new Date('2025-01-01T00:00:00+07:00');
 
 function parseClassList(raw) {
   return (raw || '')
@@ -187,38 +188,13 @@ function _buildUserAchievementStats({ loginLogs = [], accessLogs = [], lessonVie
   const weekStart = _maxDate(_startOfWeek(now), COMPETITION_LAUNCH_AT);
   const monthStart = _maxDate(_startOfMonth(now), COMPETITION_LAUNCH_AT);
 
-  // Theo yêu cầu: ép mọi chỉ số về 0.
-  // Nếu sau này bạn muốn mở lại tính thật, chỉ cần đổi FORCE_ZERO về false.
-  const FORCE_ZERO = true;
-  if (FORCE_ZERO) {
-    return {
-      activityDateKeys: [],
-      loginDays: 0,
-      streak: 0,
-      hasLateNight: false,
-      hasEarlyBird: false,
-      studyHours: 0,
-      maxDayHours: 0,
-      longestSessionMinutes: 0,
-      points: 0,
-      weekStart,
-      monthStart,
-    };
-  }
-
   if (!_isCompetitionStarted()) {
     return {
       activityDateKeys: [],
-      loginDays: 0,
-      streak: 0,
-      hasLateNight: false,
-      hasEarlyBird: false,
-      studyHours: 0,
-      maxDayHours: 0,
-      longestSessionMinutes: 0,
-      points: 0,
-      weekStart,
-      monthStart,
+      loginDays: 0, streak: 0,
+      hasLateNight: false, hasEarlyBird: false,
+      studyHours: 0, maxDayHours: 0, longestSessionMinutes: 0,
+      points: 0, weekStart, monthStart,
     };
   }
 
@@ -283,7 +259,8 @@ function _buildUserAchievementStats({ loginLogs = [], accessLogs = [], lessonVie
   const points = Math.round(
     (wViews.length * POINTS_PER_LESSON_VIEW) +
     (wAccess.length * POINTS_PER_ACCESS_LOG) +
-    (loginDays * POINTS_PER_ACTIVE_DAY)
+    (loginDays * POINTS_PER_ACTIVE_DAY) +
+    (studyHours * POINTS_PER_STUDY_HOUR)
   );
 
   return {
@@ -355,7 +332,7 @@ async function renderClassLeaderboard() {
       return {
         username: s.username,
         name: s.full_name || s.username,
-        points: 0,
+        points: st.points,
         weeklyPoints: st.points,
         streak: st.streak,
         hours: st.studyHours
@@ -384,7 +361,7 @@ async function renderClassLeaderboard() {
           <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.08);font-size:.92rem;font-weight:900;flex-shrink:0">${medal}</div>
           <div style="min-width:0;flex:1">
             <div style="font-size:.85rem;font-weight:800;color:${rank <= 3 ? '#111827' : '#fff'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escapeHtml(u.name)}${isMe ? ' <span style="color:#6366f1">(Bạn)</span>' : ''}</div>
-            <div style="font-size:.72rem;color:${rank <= 3 ? '#475569' : 'rgba(226,232,240,.8)'};margin-top:.15rem">Tuần này: ${u.weeklyPoints} điểm • ${u.streak} ngày streak</div>
+            <div style="font-size:.72rem;color:${rank <= 3 ? '#475569' : 'rgba(226,232,240,.8)'};margin-top:.15rem">Tuần này: ${u.weeklyPoints} điểm • ${u.streak} ngày streak • ${u.hours.toFixed(1)}h học</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:.92rem;font-weight:900;color:${rank <= 3 ? '#111827' : '#fff'}">${Math.round(u.points)}</div>
@@ -445,11 +422,10 @@ async function renderProfileAchievements() {
         <span style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;padding:.18rem .5rem;border-radius:999px;font-size:.72rem;font-weight:700">+${POINTS_PER_LESSON_VIEW} điểm / lượt xem bài</span>
         <span style="background:#ecfeff;color:#155e75;border:1px solid #a5f3fc;padding:.18rem .5rem;border-radius:999px;font-size:.72rem;font-weight:700">+${POINTS_PER_ACCESS_LOG} điểm / lượt truy cập</span>
         <span style="background:#ecfdf5;color:#166534;border:1px solid #86efac;padding:.18rem .5rem;border-radius:999px;font-size:.72rem;font-weight:700">+${POINTS_PER_ACTIVE_DAY} điểm / ngày hoạt động</span>
+        <span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:.18rem .5rem;border-radius:999px;font-size:.72rem;font-weight:700">+${POINTS_PER_STUDY_HOUR} điểm / giờ học</span>
       </div>
       <div style="font-size:.74rem;color:#475569;line-height:1.65;margin-bottom:.45rem">
-        Công thức: <b style="color:#1e293b">Điểm = (Lượt xem bài × ${POINTS_PER_LESSON_VIEW}) + (Lượt truy cập × ${POINTS_PER_ACCESS_LOG}) + (Ngày hoạt động × ${POINTS_PER_ACTIVE_DAY})</b><br/>
-        Ví dụ: 12 lượt xem bài, 20 lượt truy cập, 5 ngày hoạt động ⇒
-        <b style="color:#0f172a">12×${POINTS_PER_LESSON_VIEW} + 20×${POINTS_PER_ACCESS_LOG} + 5×${POINTS_PER_ACTIVE_DAY} = ${12 * POINTS_PER_LESSON_VIEW + 20 * POINTS_PER_ACCESS_LOG + 5 * POINTS_PER_ACTIVE_DAY} điểm</b>
+        Công thức: <b style="color:#1e293b">Điểm = (Lượt xem × ${POINTS_PER_LESSON_VIEW}) + (Lượt truy cập × ${POINTS_PER_ACCESS_LOG}) + (Ngày hoạt động × ${POINTS_PER_ACTIVE_DAY}) + (Giờ học × ${POINTS_PER_STUDY_HOUR})</b>
       </div>
       <div style="font-size:.73rem;color:#334155;line-height:1.6;background:#fff;border:1px solid #dbeafe;border-radius:8px;padding:.45rem .55rem">
         <b>🔄 Chu kỳ reset</b><br/>
@@ -1716,11 +1692,95 @@ document.getElementById('viewerRotateBtn')?.addEventListener('click', () => {
 });
 
 // ---- Init ----
-loadMe().then(() => {
+// ============================================================
+// QUÀ ĐIỂM HẰNG NGÀY
+// ============================================================
+async function checkDailyReward() {
+  if (!currentUser) return;
+  const today = new Date().toISOString().split('T')[0];
+
+  // Kiểm tra localStorage trước (nhanh, tránh hiện 2 lần)
+  const lsKey = `dr_claimed_${currentUser}`;
+  if (localStorage.getItem(lsKey) === today) return;
+
+  // Kiểm tra DB
+  const { data: existing } = await db.from('daily_rewards')
+    .select('id').eq('username', currentUser).eq('reward_date', today).maybeSingle();
+  if (existing) {
+    // Đã nhận rồi → lưu localStorage để lần sau không cần query DB
+    localStorage.setItem(lsKey, today);
+    return;
+  }
+
+  // Tính streak: đếm ngày liên tiếp trước hôm nay
+  const { data: recentRewards } = await db.from('daily_rewards')
+    .select('reward_date').eq('username', currentUser)
+    .order('reward_date', { ascending: false }).limit(60);
+
+  let streak = 1;
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  let checkDate = yesterday;
+  for (const r of (recentRewards||[])) {
+    const d = r.reward_date;
+    const check = checkDate.toISOString().split('T')[0];
+    if (d === check) {
+      streak++;
+      checkDate = new Date(checkDate); checkDate.setDate(checkDate.getDate() - 1);
+    } else break;
+  }
+
+  // Tính điểm theo streak
+  let points = 10;
+  if (streak >= 30) points = 50;
+  else if (streak >= 14) points = 35;
+  else if (streak >= 7)  points = 25;
+  else if (streak >= 3)  points = 15;
+
+  // Hiện popup
+  const overlay = document.getElementById('dailyRewardOverlay');
+  if (!overlay) return;
+  document.getElementById('drPoints').textContent = `+${points}`;
+  document.getElementById('drStreakNum').textContent = streak;
+  const pct = Math.min(100, Math.round((streak / 30) * 100));
+  setTimeout(() => { const bar = document.getElementById('drStreakBar'); if (bar) bar.style.width = pct + '%'; }, 300);
+  if (streak >= 3) document.getElementById('drBonusInfo').style.display = 'block';
+  // Emoji lửa theo streak
+  const fire = document.getElementById('drStreakFire');
+  if (fire) fire.textContent = streak >= 30 ? '🔥🔥🔥' : streak >= 7 ? '🔥🔥' : '🔥';
+
+  overlay.style.display = 'flex';
+
+  document.getElementById('drClaimBtn').addEventListener('click', async () => {
+    overlay.style.display = 'none';
+    // Lưu localStorage ngay lập tức — tránh nhận 2 lần nếu click nhanh
+    localStorage.setItem(lsKey, today);
+    // Lưu vào DB
+    await db.from('daily_rewards').insert({ username: currentUser, reward_date: today, points, streak_day: streak });
+    // Cộng điểm vào access_logs (dùng như 1 lượt hoạt động để tính điểm thi đua)
+    for (let i = 0; i < Math.round(points / 5); i++) {
+      await db.from('access_logs').insert({
+        username: currentUser,
+        student_name: sessionStorage.getItem('dh_name') || currentUser,
+        class_name: myClass || '',
+        lesson_name: `[Quà hằng ngày - Ngày ${streak}]`,
+        content_type: 'daily_reward',
+        accessed_at: new Date().toISOString()
+      });
+    }
+    // Toast thông báo
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:.65rem 1.25rem;border-radius:20px;font-size:.88rem;font-weight:700;z-index:99999;box-shadow:0 8px 24px rgba(245,158,11,.4);opacity:0;transition:all .3s';
+    toast.textContent = `🎁 +${points} điểm! Streak ${streak} ngày 🔥`;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+  }, { once: true });
+}
+
+loadMe().then(async () => {
   const savedPage = sessionStorage.getItem('st_page') || 'home';
   const savedLesson = sessionStorage.getItem('st_lesson_id');
   if (savedPage === 'lessons' && savedLesson) {
-    // Kích hoạt trang lessons trước rồi mở bài
     currentSection = 'lessons';
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.slink').forEach(l => l.classList.remove('active'));
@@ -1732,6 +1792,8 @@ loadMe().then(() => {
     showPage(savedPage);
   }
   checkNewNotifications(true);
+  // Hiện quà hằng ngày sau 1.5s (sau khi trang đã load xong)
+  setTimeout(() => checkDailyReward(), 1500);
 });
 
 // ── Helper hiện màn hình bị đăng xuất do thiết bị mới ──
