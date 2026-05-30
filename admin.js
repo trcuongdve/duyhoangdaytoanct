@@ -219,8 +219,28 @@ function attachGmailValidation(id) {
           hint.innerHTML = `
             <div style="font-weight:700;color:#92400e;margin-bottom:.4rem">⚠️ Gmail này đã có tài khoản: <b>${existing.full_name}</b></div>
             <div style="color:#78350f;margin-bottom:.6rem">Lớp hiện tại: <b>${existing.class_name||'Chưa có'}</b></div>
-            <button type="button" id="fillExistingBtn" style="background:#f59e0b;color:#fff;border:none;padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">📋 Điền thông tin & thêm lớp phụ</button>`;
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button type="button" id="fillExistingBtn" style="background:#f59e0b;color:#fff;border:none;padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">📋 Điền thông tin & thêm lớp phụ</button>
+              <button type="button" id="deleteExistingBtn" style="background:#ef4444;color:#fff;border:none;padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">🗑 Xóa & cấp tài khoản mới</button>
+            </div>`;
           el.insertAdjacentElement('afterend', hint);
+          hint.querySelector('#deleteExistingBtn').addEventListener('click', () => {
+            showConfirm(`Xóa tài khoản của "${existing.full_name}" để cấp mới?`, async () => {
+              await db.from('students').delete().eq('id', existing.id);
+              // Reset hint và form để cấp mới
+              hint.remove();
+              el.style.borderColor = '';
+              delete el.dataset.existingId;
+              delete el.dataset.existingClasses;
+              document.getElementById('csName').value = '';
+              document.getElementById('csPhone').value = '';
+              genStudentCode().then(c => {
+                document.getElementById('csCode').value = c;
+                document.getElementById('csPassword').value = c;
+              });
+              renderMiniStudents();
+            });
+          });
           hint.querySelector('#fillExistingBtn').addEventListener('click', async () => {
             // Điền thông tin vào form
             document.getElementById('csName').value = existing.full_name;
@@ -1256,8 +1276,14 @@ async function renderMiniStudents() {
   tbody.innerHTML = '';
   slice.forEach(s => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${s.student_code||'<span style="color:var(--muted)">—</span>'}</td><td>${s.full_name}</td><td>${s.phone||''}</td><td>${s.username}</td><td>${s.class_name||''}</td><td><span class="status-badge ${s.active?'active':'inactive'}">${s.active?'HD':'Khoa'}</span></td><td><button class="btn-sm" data-action="edit">&#x270F;&#xFE0F;</button></td>`;
+    tr.innerHTML = `<td>${s.student_code||'<span style="color:var(--muted)">—</span>'}</td><td>${s.full_name}</td><td>${s.phone||''}</td><td>${s.username}</td><td>${s.class_name||''}</td><td><span class="status-badge ${s.active?'active':'inactive'}">${s.active?'HD':'Khoa'}</span></td><td style="white-space:nowrap"><button class="btn-sm" data-action="edit">&#x270F;&#xFE0F;</button> <button class="btn-sm" data-action="delete" style="color:#ef4444;border-color:#fca5a5" title="Xóa học viên">🗑</button></td>`;
     tr.querySelector('[data-action="edit"]').addEventListener('click', () => openEditStudent(s));
+    tr.querySelector('[data-action="delete"]').addEventListener('click', () => {
+      showConfirm(`Xóa học viên "${s.full_name}"?`, async () => {
+        await db.from('students').delete().eq('id', s.id);
+        renderMiniStudents(); renderStudents(); populateClassFilters();
+      });
+    });
     tbody.appendChild(tr);
   });
   const pg = document.getElementById('miniPagination');
