@@ -8,7 +8,7 @@ document.getElementById('welcomeText').textContent =
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
   sessionStorage.clear();
-  window.location.href = 'login.html';
+  window.location.href = 'index.html';
 });
 
 const subjectLabels = {

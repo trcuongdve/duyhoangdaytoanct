@@ -1394,44 +1394,7 @@ function openViewer(title, url, fileName, fileType) {
       iframe.onload = hideLoading;
       iframeWrap.appendChild(iframe);
 
-      // ── Overlay che đúng 2 vùng trong khung đỏ — áp dụng tất cả video ──
-      // Chỉ desktop (mobile _skipOverlay = true nên không vào đây)
-      {
-        const mkZone = (css) => {
-          const d = document.createElement('div');
-          d.style.cssText = 'position:absolute;z-index:10;pointer-events:auto;background:transparent;' + css;
-          d.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
-          d.addEventListener('click',     e => { e.preventDefault(); e.stopPropagation(); });
-          d.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
-          iframeWrap.appendChild(d);
-        };
-        // Vùng 1: Góc trên-trái — che tên video + avatar kênh (52px cao, 55% rộng)
-        mkZone('top:0;left:0;width:55%;height:52px;');
-        // Vùng 2: Góc dưới-phải — che logo YouTube + "Video khác"
-        // Thanh controls YT cao ~46px, logo nằm bên phải trong thanh đó
-        // Dùng bottom:0 height:46px để che đúng thanh, chỉ che nửa phải (không đụng play/pause/tua)
-        mkZone('bottom:0;right:0;width:260px;height:46px;');
-      }
 
-      // ── Phát hiện iframe mở tab mới (blur trick) ──
-      // Khi YouTube mở tab mới, window mất focus → blur event
-      // Đóng tab đó ngay bằng cách focus lại window
-      let _iframeFocused = false;
-      const _onIframeMouseEnter = () => { _iframeFocused = true; };
-      const _onIframeMouseLeave = () => { _iframeFocused = false; };
-      const _onWindowBlur = () => {
-        if (_iframeFocused && _viewerActive && _viewerIsVideo) {
-          // Window mất focus trong khi chuột đang trên iframe → có thể tab mới vừa mở
-          setTimeout(() => {
-            window.focus();
-            // Đóng tab mới nhất nếu có thể
-            try { window.open('', '_self'); } catch(e) {}
-          }, 0);
-        }
-      };
-      iframeWrap.addEventListener('mouseenter', _onIframeMouseEnter);
-      iframeWrap.addEventListener('mouseleave', _onIframeMouseLeave);
-      window.addEventListener('blur', _onWindowBlur);
 
       // Chặn window.open toàn trang khi viewer đang mở
       // Ngoại lệ: cho phép link tải xuống Google Drive đi qua
@@ -1465,83 +1428,12 @@ function openViewer(title, url, fileName, fileType) {
       };
       document.addEventListener('keydown', _onKeyF, true);
 
-      // ── Overlay che tên kênh khi fullscreen ──
-      // Khi iframe fullscreen, trình duyệt đưa iframe lên trên tất cả —
-      // nhưng các element trong ::backdrop / pseudo-fullscreen vẫn render được
-      // nếu dùng :fullscreen selector trên iframe wrapper.
-      // Cách đáng tin cậy nhất: inject style vào <head> che góc trên-trái
-      // bằng ::before pseudo-element trên iframe khi nó ở trạng thái fullscreen.
-      const _fsStyleId = '_yt_fs_style_' + iframe.id;
-      const _fsStyle = document.createElement('style');
-      _fsStyle.id = _fsStyleId;
-      _fsStyle.textContent = `
-        /* Che tên kênh YT góc trên-trái khi fullscreen */
-        #${iframe.id}:-webkit-full-screen { outline: none; }
-        #${iframe.id}:-moz-full-screen    { outline: none; }
-        #${iframe.id}:fullscreen          { outline: none; }
-
-        /* Overlay cố định che góc trên-trái — hiện khi #_fs_topbar tồn tại */
-        #_fs_topbar {
-          position: fixed;
-          top: 0; left: 0;
-          width: 340px; height: 52px;
-          background: #000;
-          z-index: 2147483647;
-          pointer-events: none;
-        }
-        #_fs_topbar_right {
-          position: fixed;
-          top: 0; right: 0;
-          width: 220px; height: 52px;
-          background: #000;
-          z-index: 2147483647;
-          pointer-events: none;
-        }
-      `;
-      document.head.appendChild(_fsStyle);
-
-      // Tạo sẵn 2 thanh che (ẩn mặc định)
-      const _fsBar = document.createElement('div');
-      _fsBar.id = '_fs_topbar';
-      _fsBar.style.display = 'none';
-      document.body.appendChild(_fsBar);
-
-      const _fsBarR = document.createElement('div');
-      _fsBarR.id = '_fs_topbar_right';
-      _fsBarR.style.display = 'none';
-      document.body.appendChild(_fsBarR);
-
-      const _onFsChange = () => {
-        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
-        if (fsEl === iframe) {
-          // Đang fullscreen iframe → hiện thanh che
-          _fsBar.style.display  = 'block';
-          _fsBarR.style.display = 'block';
-        } else {
-          // Thoát fullscreen → ẩn thanh che
-          _fsBar.style.display  = 'none';
-          _fsBarR.style.display = 'none';
-        }
-      };
-      document.addEventListener('fullscreenchange',       _onFsChange);
-      document.addEventListener('webkitfullscreenchange', _onFsChange);
-      document.addEventListener('mozfullscreenchange',    _onFsChange);
-
       // Dọn tất cả khi đóng viewer
       iframe._cleanupF = () => {
         document.removeEventListener('keydown', _onKeyF, true);
-        document.removeEventListener('fullscreenchange',       _onFsChange);
-        document.removeEventListener('webkitfullscreenchange', _onFsChange);
-        document.removeEventListener('mozfullscreenchange',    _onFsChange);
-        iframeWrap.removeEventListener('mouseenter', _onIframeMouseEnter);
-        iframeWrap.removeEventListener('mouseleave', _onIframeMouseLeave);
-        window.removeEventListener('blur', _onWindowBlur);
         // Restore window.open
         window._ytOpenBlocked = false;
         window.open = _origOpen;
-        document.getElementById(_fsStyleId)?.remove();
-        document.getElementById('_fs_topbar')?.remove();
-        document.getElementById('_fs_topbar_right')?.remove();
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       };
 
@@ -1589,23 +1481,12 @@ function openViewer(title, url, fileName, fileType) {
   } else if (isVideo) {
     const video = document.createElement('video');
     video.controls = true;
-    video.setAttribute('controlsList', 'nodownload noremoteplayback nofullscreen');
     video.setAttribute('playsinline', '');
-    video.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); return false; };
     video.style.cssText = 'flex:1;width:100%;background:#000;position:relative;z-index:1';
     video.oncanplay = hideLoading;
-    // Track video element để pause khi chuyển tab
     video.addEventListener('play', () => { _activeVideoEl = video; });
     video.addEventListener('pause', () => { if (_activeVideoEl === video) _activeVideoEl = null; });
-    // Overlay trong suốt chặn chuột phải trên video
-    const vOverlay = document.createElement('div');
-    vOverlay.style.cssText = 'position:absolute;inset:0;z-index:2;pointer-events:none;';
-    vOverlay.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); return false; });
-    const vWrap = document.createElement('div');
-    vWrap.style.cssText = 'position:relative;flex:1;min-height:0;display:flex;flex-direction:column';
-    vWrap.appendChild(video);
-    vWrap.appendChild(vOverlay);
-    wrap.appendChild(vWrap);
+    wrap.appendChild(video);
     setTimeout(() => { video.src = url; }, 0);
     if (window.innerWidth < 768 && window.innerHeight > window.innerWidth) {
       const tip = document.createElement('div');
