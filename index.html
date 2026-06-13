@@ -1140,6 +1140,90 @@
   <div style="text-align:center;padding:.6rem;font-size:.75rem;color:rgba(255,255,255,.5);background:transparent;letter-spacing:.5px">
     by.trcuong
   </div>
+
+  <!-- ===== POPUP CHÍNH SÁCH BẢO MẬT ===== -->
+  <div id="policyPopup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;overflow-y:auto;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
+    <div style="max-width:520px;margin:1.5rem auto 2rem;border-radius:22px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.4);animation:policyPopIn .4s cubic-bezier(.22,1,.36,1) both">
+
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1e1b4b,#4338ca);padding:1.75rem 1.5rem 1.5rem;color:#fff;position:relative">
+        <div style="display:flex;align-items:center;gap:.85rem">
+          <div style="width:48px;height:48px;background:rgba(255,255,255,.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;border:1.5px solid rgba(255,255,255,.2)">🔒</div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:900;letter-spacing:-.3px">Chính sách bảo mật & Điều khoản</div>
+            <div style="font-size:.78rem;opacity:.65;margin-top:.2rem">DHDTCT LMS — Vui lòng đọc trước khi sử dụng</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div style="background:#fff;padding:1.5rem;display:flex;flex-direction:column;gap:.85rem">
+
+        <div style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:12px;padding:.75rem 1rem;font-size:.84rem;color:#78350f;line-height:1.7;display:flex;gap:.6rem;align-items:flex-start">
+          <span style="font-size:1.1rem;flex-shrink:0">⚠️</span>
+          <span>Việc tiếp tục sử dụng hệ thống đồng nghĩa bạn đã đọc, hiểu và <b>đồng ý toàn bộ</b> nội dung chính sách dưới đây.</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:.6rem;font-size:.85rem;color:#374151;line-height:1.8">
+          <div style="display:flex;gap:.6rem;align-items:flex-start">
+            <span style="color:#6366f1;font-weight:800;flex-shrink:0">①</span>
+            <span>Mỗi tài khoản chỉ dành cho <b>01 người</b> — nghiêm cấm chia sẻ, cho mượn hoặc bán tài khoản.</span>
+          </div>
+          <div style="display:flex;gap:.6rem;align-items:flex-start">
+            <span style="color:#6366f1;font-weight:800;flex-shrink:0">②</span>
+            <span>Nghiêm cấm <b>chụp màn hình, quay video</b> nội dung bài giảng dưới mọi hình thức.</span>
+          </div>
+          <div style="display:flex;gap:.6rem;align-items:flex-start">
+            <span style="color:#6366f1;font-weight:800;flex-shrink:0">③</span>
+            <span>Hệ thống <b>giám sát 24/7</b> — mọi hành vi bất thường đều bị ghi nhận và xử lý ngay.</span>
+          </div>
+          <div style="display:flex;gap:.6rem;align-items:flex-start">
+            <span style="color:#6366f1;font-weight:800;flex-shrink:0">④</span>
+            <span>Vi phạm có thể dẫn đến <b>khóa tài khoản vĩnh viễn</b> mà không cần thông báo trước.</span>
+          </div>
+        </div>
+
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:.7rem 1rem;font-size:.83rem;color:#166534;line-height:1.7">
+          📄 Xem đầy đủ tại: <a href="policy.html" target="_blank" style="color:#4f46e5;font-weight:700;text-decoration:underline;text-underline-offset:2px">Chính sách bảo mật & Điều khoản sử dụng</a>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.25rem">
+          <button onclick="acceptPolicy()" style="width:100%;padding:.85rem;font-size:.95rem;font-weight:800;border:none;border-radius:14px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#6366f1,#4f46e5);box-shadow:0 6px 20px rgba(99,102,241,.4);transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            ✅ Tôi đã đọc và đồng ý
+          </button>
+          <a href="policy.html" target="_blank" style="display:block;text-align:center;padding:.65rem;font-size:.85rem;font-weight:700;color:#6366f1;border:1.5px solid #c7d2fe;border-radius:12px;text-decoration:none;background:#f8faff;transition:background .15s" onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f8faff'">
+            📖 Đọc toàn bộ chính sách
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes policyPopIn {
+      from { opacity:0; transform:translateY(30px) scale(.96); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+  </style>
+
+  <script>
+    (function(){
+      // Chỉ hiện 1 lần — dùng localStorage để nhớ
+      if(!localStorage.getItem('policyAccepted')){
+        document.getElementById('policyPopup').style.display = 'block';
+      }
+    })();
+    function acceptPolicy(){
+      localStorage.setItem('policyAccepted','1');
+      var el = document.getElementById('policyPopup');
+      el.style.transition = 'opacity .3s';
+      el.style.opacity = '0';
+      setTimeout(function(){ el.style.display='none'; el.style.opacity=''; }, 300);
+    }
+  </script>
+
 </body>
 </html>
 
