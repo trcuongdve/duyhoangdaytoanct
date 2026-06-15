@@ -1272,47 +1272,17 @@ let _currentLessonGroup = '';   // group_name của bài học đang xem
 // Thêm tên nhóm vào đây nếu cần tắt overlay cho nhóm đó
 const _NO_OVERLAY_GROUPS = ['Đợt 4', 'dot 4', 'Dot 4'];
 
-// ── Chặn chuyển tab khi đang xem video ──
+// ── Cập nhật trạng thái online khi chuyển tab ──
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     db.from('students').update({ is_online: false, last_seen: new Date().toISOString() }).eq('username', currentUser);
-    // Nếu đang xem video → pause + hiện cảnh báo
-    if (_viewerActive && _viewerIsVideo) {
-      if (_activeVideoEl && !_activeVideoEl.paused) _activeVideoEl.pause();
-      _showTabWarning();
-    }
   } else {
     db.from('students').update({ is_online: true, last_seen: new Date().toISOString() }).eq('username', currentUser);
-    _hideTabWarning();
   }
 });
 
-function _showTabWarning() {
-  if (_tabWarnShown) return;
-  _tabWarnShown = true;
-  let overlay = document.getElementById('_tabWarnOverlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = '_tabWarnOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.92);z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;text-align:center;padding:2rem;backdrop-filter:blur(6px)';
-    overlay.innerHTML = `
-      <div style="font-size:3rem">⚠️</div>
-      <div style="color:#f59e0b;font-size:1.15rem;font-weight:800">Video đã bị tạm dừng</div>
-      <div style="color:rgba(255,255,255,.8);font-size:.9rem;max-width:300px;line-height:1.7">
-        Bạn đã rời khỏi trang trong khi xem video.<br/>
-        Hành vi này đã được ghi lại.
-      </div>
-      <button id="_tabWarnBtn" style="background:#6366f1;color:#fff;border:none;padding:.75rem 2rem;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:.5rem">
-        ▶ Tiếp tục xem
-      </button>`;
-    document.body.appendChild(overlay);
-    document.getElementById('_tabWarnBtn').addEventListener('click', _hideTabWarning);
-  }
-  overlay.style.display = 'flex';
-}
-
+function _showTabWarning() { /* đã tắt */ }
 function _hideTabWarning() {
-  _tabWarnShown = false;
   const overlay = document.getElementById('_tabWarnOverlay');
   if (overlay) overlay.style.display = 'none';
 }
@@ -2009,6 +1979,8 @@ setInterval(async () => {
 // ============================================================
 // TỰ ĐỘNG ĐĂNG XUẤT SAU 30 PHÚT KHÔNG THAO TÁC
 // ============================================================
+// TỰ ĐỘNG ĐĂNG XUẤT SAU 30 PHÚT KHÔNG THAO TÁC
+// ============================================================
 (function autoLogout() {
   const TIMEOUT = 30 * 60 * 1000; // 30 phút
   const WARN    = 60 * 1000;       // cảnh báo trước 60 giây
@@ -2028,6 +2000,8 @@ setInterval(async () => {
 
   let countdown;
   function showWarning() {
+    // Nếu đang xem video thì tự reset, không hiện cảnh báo
+    if (_viewerActive && _viewerIsVideo) { reset(); return; }
     overlay.style.display = 'flex';
     let secs = 60;
     document.getElementById('alCountdown').textContent = secs;
@@ -2035,6 +2009,8 @@ setInterval(async () => {
       secs--;
       const el = document.getElementById('alCountdown');
       if (el) el.textContent = secs;
+      // Nếu đang xem video thì reset thay vì logout
+      if (_viewerActive && _viewerIsVideo) { clearInterval(countdown); reset(); return; }
       if (secs <= 0) { clearInterval(countdown); logout(); }
     }, 1000);
   }
