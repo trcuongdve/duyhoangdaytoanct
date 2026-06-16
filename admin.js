@@ -369,6 +369,19 @@ const isTeacher = _role === 'teacher';
 function fmtDate(d) { if (!d) return ''; const [y,m,day]=(d||'').split('-'); return `${day}/${m}/${y}`; }
 function fmtTime(ts) { return new Date(ts).toLocaleString('vi-VN'); }
 
+// ---- Ghi log biến động tài khoản vào bảng alerts ----
+async function logAccountActivity(action, student) {
+  // action: 'Tạo tài khoản' | 'Xóa tài khoản' | 'Sửa tài khoản'
+  const by = sessionStorage.getItem('dh_name') || 'Admin';
+  const role = isTeacher ? 'Admin' : 'Trợ lý';
+  await db.from('alerts').insert({
+    student_name: student.full_name || student.name || '',
+    username:     student.username  || '',
+    class_name:   student.class_name || student.cls || '',
+    reason:       `${action} — bởi ${role} ${by}`
+  });
+}
+
 const displayName = sessionStorage.getItem('dh_name') || 'Admin';
 const displayRole = isTeacher ? 'Admin' : 'Trợ lý';
 document.getElementById('teacherName').textContent = displayName;
@@ -1203,6 +1216,7 @@ document.getElementById('csSaveBtn').addEventListener('click', async () => {
     document.getElementById('csPassword').value = c;
   });
 
+  logAccountActivity('Tạo tài khoản', { full_name: name, username, class_name: cls });
   await renderMiniStudents();
   await populateClassFilters();
 });
@@ -1276,11 +1290,12 @@ async function renderMiniStudents() {
   tbody.innerHTML = '';
   slice.forEach(s => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${s.student_code||'<span style="color:var(--muted)">—</span>'}</td><td>${s.full_name}</td><td>${s.phone||''}</td><td>${s.username}</td><td>${s.class_name||''}</td><td><span class="status-badge ${s.active?'active':'inactive'}">${s.active?'HD':'Khoa'}</span></td><td style="white-space:nowrap"><button class="btn-sm" data-action="edit">&#x270F;&#xFE0F;</button> <button class="btn-sm" data-action="delete" style="color:#ef4444;border-color:#fca5a5" title="Xóa học viên">🗑</button></td>`;
+    tr.innerHTML = `<td>${s.student_code||'<span style="color:var(--muted)">—</span>'}</td><td>${s.full_name}</td><td>${s.phone||''}</td><td>${s.username}</td><td>${s.class_name||''}</td><td><span class="status-badge ${s.active?'active':'inactive'}">${s.active?'HD':'Khoa'}</span></td><td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${s.created_at ? fmtTime(s.created_at) : '—'}</td><td style="white-space:nowrap"><button class="btn-sm" data-action="edit">&#x270F;&#xFE0F;</button> <button class="btn-sm" data-action="delete" style="color:#ef4444;border-color:#fca5a5" title="Xóa học viên">🗑</button></td>`;
     tr.querySelector('[data-action="edit"]').addEventListener('click', () => openEditStudent(s));
     tr.querySelector('[data-action="delete"]').addEventListener('click', () => {
       showConfirm(`Xóa học viên "${s.full_name}"?`, async () => {
         await db.from('students').delete().eq('id', s.id);
+        logAccountActivity('Xóa tài khoản', s);
         renderMiniStudents(); renderStudents(); populateClassFilters();
       });
     });
@@ -1390,7 +1405,9 @@ function renderStudentRow(s, today, expiredClasses) {
   tr.querySelector('[data-action="export-img"]').addEventListener('click', () => exportStudentCard(s));
   tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
     showConfirm(`Xóa học sinh "${s.full_name}"?`, async () => {
-      await db.from('students').delete().eq('id', s.id); renderStudents(); renderMiniStudents(); populateClassFilters();
+      await db.from('students').delete().eq('id', s.id);
+      logAccountActivity('Xóa tài khoản', s);
+      renderStudents(); renderMiniStudents(); populateClassFilters();
     });
   });
   return tr;
@@ -1722,6 +1739,7 @@ document.getElementById('addStudentSaveBtn').addEventListener('click', async () 
   if (cls && newSt?.id) {
     await db.from('student_classes').insert({ student_id: newSt.id, class_name: cls });
   }
+  logAccountActivity('Tạo tài khoản', { full_name: name, username, class_name: cls });
   document.getElementById('addStudentModal').classList.remove('open');
   renderStudents(); populateClassFilters();
 });
@@ -1870,6 +1888,7 @@ document.getElementById('esSaveBtn').addEventListener('click', async () => {
     await db.from('student_classes').upsert({ student_id: editingStudentId, class_name: cls }, { onConflict: 'student_id,class_name' });
   }
   document.getElementById('editStudentModal').classList.remove('open');
+  logAccountActivity('Sửa tài khoản', { full_name: name, username, class_name: cls });
   renderStudents(); renderMiniStudents(); populateClassFilters();
 });
 
