@@ -768,6 +768,22 @@ body.sidebar-collapsed .dash-main { margin-left: 0; }
 }
 
 .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--primary); }
+.modal input[type="checkbox"], .modal input[type="radio"] {
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--primary, #6366f1);
+  appearance: auto;
+  -webkit-appearance: auto;
+  outline: none;
+  box-shadow: none;
+  transition: none;
+  background: transparent;
+}
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
 
 .modal-close {

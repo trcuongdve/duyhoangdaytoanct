@@ -906,6 +906,44 @@
     </div>
   </div>
 
+  <!-- MODAL: Xóa học sinh có chọn lọc -->
+  <div class="modal-overlay" id="deleteSelectiveModal">
+    <div class="modal" style="max-width:600px">
+      <h2>🎯 Xóa học sinh có chọn lọc</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin:-.25rem 0 .25rem">
+        ☐ <b>Không tích = Xóa ngay</b> &nbsp;·&nbsp; ✅ <b>Tích = Giữ lại</b> — tích vào học viên muốn giữ, có thể đặt ngày xóa cho từng người được giữ.
+      </p>
+
+      <div style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:10px;padding:.6rem 1rem;font-size:.84rem;color:#92400e">
+        ⚠️ Lớp: <strong id="dsModalClassName"></strong> — <span id="dsModalTotalCount"></span> học viên
+      </div>
+
+      <div style="position:relative">
+        <span style="position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">🔍</span>
+        <input type="text" id="dsSearchInput" placeholder="Tìm học viên..." autocomplete="off"
+          style="width:100%;padding:.5rem 1rem .5rem 2.2rem;border:1.5px solid var(--border);border-radius:10px;outline:none;font-size:.87rem"
+          onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"/>
+      </div>
+
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <button id="dsSelectAllBtn" class="btn-sm btn-outline" style="font-size:.8rem">☑ Tích tất cả (giữ hết)</button>
+        <button id="dsSelectNoneBtn" class="btn-sm btn-outline" style="font-size:.8rem">☐ Bỏ tích hết (xóa hết)</button>
+        <span id="dsSelectedCount" style="margin-left:auto;font-size:.82rem;color:var(--muted)">—</span>
+      </div>
+
+      <!-- Danh sách học viên -->
+      <div id="dsStudentList" style="max-height:340px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px"></div>
+
+      <div id="dsPreview" style="display:none"></div>
+      <div id="dsError" class="error-msg"></div>
+
+      <div class="modal-actions">
+        <button id="dsCancelBtn" class="btn-outline">Hủy</button>
+        <button id="dsConfirmBtn" class="btn-primary btn-danger">🗑 Xác nhận xóa</button>
+      </div>
+    </div>
+  </div>
+
   <script src="admin.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
