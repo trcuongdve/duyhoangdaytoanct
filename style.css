@@ -580,7 +580,10 @@ body.sidebar-collapsed .dash-main { margin-left: 0; }
 .video-meta  { font-size: .78rem; color: var(--muted); margin-bottom: .6rem; }
 
 /* Two-col layout */
-.two-col { display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; align-items: start; }
+.two-col { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 1.5rem; align-items: start; }
+@media (max-width: 820px) {
+  .two-col { grid-template-columns: 1fr; }
+}
 
 /* Form panel */
 .form-panel {
@@ -768,22 +771,6 @@ body.sidebar-collapsed .dash-main { margin-left: 0; }
 }
 
 .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--primary); }
-.modal input[type="checkbox"], .modal input[type="radio"] {
-  padding: 0;
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-  accent-color: var(--primary, #6366f1);
-  appearance: auto;
-  -webkit-appearance: auto;
-  outline: none;
-  box-shadow: none;
-  transition: none;
-  background: transparent;
-}
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
 
 .modal-close {
@@ -1783,11 +1770,9 @@ body.landing { background: #fff; }
 }
 
 /* --- Prevent horizontal overflow --- */
-@media (max-width: 768px) {
-  body { overflow-x: hidden; }
-  .dash-main { overflow-x: hidden; }
-  .page { overflow-x: hidden; }
-}
+body { overflow-x: hidden; }
+.dash-main { overflow-x: hidden; }
+.page { overflow-x: hidden; }
 
 /* --- Class grid mobile --- */
 @media (max-width: 768px) {

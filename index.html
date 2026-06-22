@@ -7,11 +7,12 @@
   <title>Đăng Nhập - DHDTCT LMS v1.3.0</title>
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net;
+    script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://www.tiktok.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: blob: https://*.supabase.co;
     connect-src 'self' https://*.supabase.co wss://*.supabase.co;
+    frame-src https://www.tiktok.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
@@ -40,11 +41,11 @@
   <!-- Auth Wrap Styles -->
   <style>
     /* ══ LAYOUT ══ */
-    .auth-wrap { display:flex; width:100%; flex:1; min-height:100vh; }
 
     /* ══ LEFT PANEL ══ */
     .auth-left {
       flex: 0 0 52%;
+      min-width: 0;
       position: sticky;
       top: 0;
       height: 100vh;
@@ -54,13 +55,11 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 2.5rem 3rem;
+      padding: 2.5rem 2rem;
       overflow: hidden;
       text-align: center;
       box-sizing: border-box;
-    }
-
-    /* Orbs */
+    }    /* Orbs */
     .auth-orb { position:absolute; border-radius:50%; pointer-events:none; }
     .auth-orb-1 { top:-80px;right:-80px;width:320px;height:320px;background:radial-gradient(circle,rgba(99,102,241,.25) 0%,transparent 70%);animation:orbFloat 9s ease-in-out infinite; }
     .auth-orb-2 { bottom:-60px;left:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(6,182,212,.2) 0%,transparent 70%);animation:orbFloat 11s ease-in-out infinite reverse; }
@@ -112,32 +111,37 @@
     /* ══ RIGHT PANEL ══ */
     .auth-right {
       flex: 0 0 48%;
+      min-width: 0;
       position: sticky;
       top: 0;
       height: 100vh;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
       padding: 1.5rem 2rem;
       background: linear-gradient(160deg, #eef2ff 0%, #f0f4ff 60%, #e8eeff 100%);
       box-sizing: border-box;
       overflow-y: auto;
+      scrollbar-width: none;
     }
+    .auth-right::-webkit-scrollbar { display: none; }
 
     .auth-box {
       background: #fff;
       border-radius: 28px;
-      padding: 2.25rem 2rem 1.75rem;
+      padding: 1.75rem 2rem 1.5rem;
       width: 100%;
       max-width: 390px;
-      margin: auto 0;
       box-shadow: 0 20px 60px rgba(99,102,241,.15), 0 4px 16px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.95);
       border: 1px solid rgba(99,102,241,.1);
       display: flex;
       flex-direction: column;
-      gap: .75rem;
+      gap: .65rem;
       animation: boxIn .55s cubic-bezier(.22,1,.36,1) both;
     }
+
+    /* ══ WRAP ══ */
+    .auth-wrap { display:flex; width:100%; flex:1; min-height:100vh; min-width:0; }
     @keyframes boxIn { from{opacity:0;transform:translateY(20px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
 
     /* ══ MOBILE ══ */
@@ -156,7 +160,7 @@
     @keyframes logoPop        { from{opacity:0;transform:scale(.7)} to{opacity:1;transform:scale(1)} }
     @keyframes spin           { to{transform:rotate(360deg)} }
     @keyframes gradientShift  { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    @keyframes authSlideLeft  { from{opacity:0;transform:translateX(-18px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes authSlideLeft  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
     @keyframes floatShape     { 0%,100%{transform:translate(0,0)} 50%{transform:translate(10px,-12px)} }
   </style>
 
@@ -182,7 +186,7 @@
           <div style="font-weight:900;font-size:1.3rem;letter-spacing:-.4px;text-shadow:0 2px 12px rgba(0,0,0,.4)">DHDTCT LMS Education System</div>
           <div style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.4rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:.2rem .75rem;font-size:.75rem;letter-spacing:.8px;opacity:.8">
             <span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block"></span>
-            CẦN THƠ • SMART LEARNING PLATFORM
+            SMART LEARNING PLATFORM
           </div>
         </div>
       </div>
@@ -215,7 +219,7 @@
           <img src="icons/icon-192.png" alt="DHDTCT Logo"/>
         </div>
         <div class="auth-sys-name">DHDTCT LMS Education System</div>
-        <div class="auth-sys-tag">Nền tảng học Toán &amp; luyện thi thông minh tại Cần Thơ</div>
+        <div class="auth-sys-tag">Nền tảng học Toán &amp; luyện thi thông minh</div>
 
         <!-- Headline -->
         <h1 class="auth-headline">
@@ -373,35 +377,153 @@
     </div>
   </div>
 
-  <!-- FOOTER BẢN QUYỀN -->
-  <footer style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:1.75rem 2rem;text-align:center;color:#fff">
-    <div style="max-width:600px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:.6rem">
-      <div style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:.55rem 1.25rem">
-        <span style="font-size:1rem">🚀</span>
-        <span style="font-size:.82rem;font-weight:800;letter-spacing:.2px">Thiết kế, phát triển và vận hành bởi <span style="color:#a5b4fc">Tr.Cường08</span> & <span style="color:#a5b4fc">Quốc Toàn</span></span>
-      </div>
-      <div style="font-size:.78rem;font-weight:700;color:#a5b4fc;letter-spacing:.3px">DHDTCT LMS Education System</div>
+  <!-- FLOATING SOCIAL BUTTONS -->
+  <style>
+    .fab-wrap {
+      position: fixed;
+      bottom: 1.75rem;
+      right: 1.25rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      align-items: flex-end;
+    }
+    .fab-item {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      text-decoration: none;
+      border-radius: 50px;
+      padding: .55rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      transition: box-shadow .2s, padding .2s;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .fab-item svg { flex-shrink: 0; display: block; }
+    .fab-label {
+      font-size: .78rem;
+      font-weight: 700;
+      color: #fff;
+      width: 0;
+      overflow: hidden;
+      transition: width .25s cubic-bezier(.34,1.56,.64,1), margin .25s;
+      letter-spacing: .2px;
+      margin-left: 0;
+    }
+    .fab-item:hover { padding: .55rem 1rem .55rem .6rem; box-shadow: 0 8px 28px rgba(0,0,0,.28); }
+    .fab-item:hover .fab-label { width: 70px; margin-left: .5rem; }
+    .fab-item-fb { background: #1877f2; }
+    .fab-item-tt { background: #010101; }
+  </style>
 
-      <!-- Thời gian hỗ trợ -->
-      <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:.65rem 1.25rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;justify-content:center">
-        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:rgba(255,255,255,.85);font-weight:600">
-          <span>🕐</span><span>Thời gian hỗ trợ:</span>
-          <span style="color:#a5b4fc;font-weight:800">Thứ 2 – Chủ nhật &nbsp;•&nbsp; 7:00 – 22:00</span>
+  <div class="fab-wrap">
+    <a href="https://www.facebook.com/duyhoangdaytoan" target="_blank" rel="noopener noreferrer" class="fab-item fab-item-fb" aria-label="Facebook">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+      <span class="fab-label">Facebook</span>
+    </a>
+    <a href="https://www.tiktok.com/@duyhoangdaytoan" target="_blank" rel="noopener noreferrer" class="fab-item fab-item-tt" aria-label="TikTok">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/></svg>
+      <span class="fab-label">TikTok</span>
+    </a>
+  </div>
+
+  <!-- FOOTER BẢN QUYỀN -->
+  <style>
+    .footer-main { background: linear-gradient(135deg,#1e1b4b 0%,#312e81 100%); color:#fff; padding: 2.5rem 1.5rem 0; box-sizing: border-box; width:100%; }
+    .footer-grid { max-width:960px; margin:0 auto; display:grid; grid-template-columns:1.1fr 1fr 0.9fr; gap:1.5rem; padding-bottom:2rem; border-bottom:1px solid rgba(255,255,255,.1); box-sizing:border-box; width:100%; }
+    .footer-col { display:flex; flex-direction:column; gap:.7rem; min-width:0; word-break:break-word; }
+    .footer-label { font-size:.72rem; font-weight:800; color:#a5b4fc; letter-spacing:.8px; text-transform:uppercase; margin-bottom:.15rem; }
+    .footer-row { display:flex; align-items:flex-start; gap:.5rem; font-size:.78rem; color:rgba(255,255,255,.75); line-height:1.65; }
+    .footer-row span:first-child { flex-shrink:0; margin-top:.05rem; }
+    .footer-bottom { max-width:960px; margin:0 auto; padding:.85rem 0 1.25rem; text-align:center; box-sizing:border-box; }
+    .footer-bottom p { margin:0 0 .3rem; font-size:.71rem; color:rgba(255,255,255,.3); line-height:1.85; }
+    .footer-bottom p:first-child { font-size:.75rem; color:rgba(255,255,255,.5); font-weight:700; margin-bottom:.4rem; }
+    .footer-social { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .footer-social a { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform .2s, box-shadow .2s; }
+    .footer-social a:hover { transform:translateY(-3px); }
+    .footer-badge { display:inline-flex; align-items:center; gap:.4rem; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:.3rem .7rem; width:fit-content; max-width:100%; }
+    @media (max-width:760px) {
+      .footer-main { padding: 2rem 1.25rem 0; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap:1.25rem; }
+    }
+    @media (max-width:440px) {
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <footer class="footer-main">
+    <div class="footer-grid">
+
+      <!-- Cột 1: Logo & hệ thống -->
+      <div class="footer-col">
+        <div style="display:flex;align-items:center;gap:.65rem">
+          <div style="width:42px;height:42px;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.4);flex-shrink:0">
+            <img src="icons/icon-192.png" style="width:100%;height:100%;object-fit:cover" alt="Logo"/>
+          </div>
+          <div>
+            <div style="font-size:.9rem;font-weight:900;letter-spacing:-.2px;line-height:1.2">DHDTCT LMS</div>
+            <div style="font-size:.68rem;color:#a5b4fc;font-weight:600;margin-top:.1rem">Education System</div>
+          </div>
+        </div>
+        <div class="footer-badge">
+          <span style="width:7px;height:7px;background:#10b981;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px #10b981"></span>
+          <span style="font-size:.7rem;font-weight:700;color:rgba(255,255,255,.75);letter-spacing:.3px">Đang hoạt động</span>
         </div>
       </div>
-      <div style="font-size:.71rem;color:rgba(255,255,255,.55);line-height:1.75;max-width:480px">
-        Bản quyền thuộc về <b style="color:rgba(255,255,255,.8)">Tr.Cường08</b> & <b style="color:rgba(255,255,255,.8)">Quốc Toàn</b>. Mọi hành vi sao chép, sử dụng trái phép nội dung hoặc mã nguồn đều có thể bị xử lý theo quy định hiện hành.
+
+      <!-- Cột 2: Thông tin hỗ trợ -->
+      <div class="footer-col">
+        <div class="footer-label">Hỗ trợ</div>
+        <div class="footer-row">
+          <span>📍</span>
+          <span>Nguyễn Thông, An Thới,<br/>Bình Thủy, Cần Thơ</span>
+        </div>
+        <div class="footer-row">
+          <span>🕐</span>
+          <span>Thứ 2 – Chủ nhật<br/><b style="color:#a5b4fc">7:00 – 22:00</b></span>
+        </div>
+        <div class="footer-row">
+          <span>🚀</span>
+          <span>Thiết kế &amp; vận hành bởi<br/><b style="color:#a5b4fc">Tr.Cường08</b> &amp; <b style="color:#a5b4fc">Quốc Toàn</b></span>
+        </div>
+        <a href="policy.html" style="display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;color:rgba(165,180,252,.85);font-weight:600;text-decoration:none;transition:color .2s;margin-top:.1rem" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(165,180,252,.85)'">
+          🔒 Chính sách &amp; Điều khoản
+        </a>
       </div>
-      <div style="display:flex;align-items:center;gap:.6rem;margin-top:.1rem">
-        <span style="width:24px;height:1px;background:rgba(255,255,255,.2);display:inline-block"></span>
-        <span style="font-size:.69rem;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.4px">Thiết kế &amp; Phát triển bởi Tr.Cường08 &amp; Quốc Toàn</span>
-        <span style="width:24px;height:1px;background:rgba(255,255,255,.2);display:inline-block"></span>
+
+      <!-- Cột 3: Kết nối -->
+      <div class="footer-col">
+        <div class="footer-label">Kết nối với chúng tôi</div>
+        <div class="footer-social">
+          <a href="https://www.facebook.com/duyhoangdaytoan" target="_blank" rel="noopener noreferrer" title="Facebook"
+             style="background:#1877f2;box-shadow:0 4px 14px rgba(24,119,242,.45)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+          </a>
+          <a href="https://www.tiktok.com/@duyhoangdaytoan" target="_blank" rel="noopener noreferrer" title="TikTok"
+             style="background:#010101;border:1.5px solid rgba(255,255,255,.15);box-shadow:0 4px 14px rgba(0,0,0,.4)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/></svg>
+          </a>
+        </div>
+        <p style="font-size:.71rem;color:rgba(255,255,255,.35);line-height:1.7;margin:0">Theo dõi để nhận thông tin mới nhất về bài giảng &amp; lộ trình học.</p>
       </div>
-      <a href="policy.html" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.4rem;font-size:.71rem;color:rgba(165,180,252,.8);font-weight:600;text-decoration:none;border:1px solid rgba(165,180,252,.25);border-radius:8px;padding:.3rem .8rem;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.08)';this.style.borderColor='rgba(165,180,252,.5)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(165,180,252,.25)'">
-        🔒 Chính sách bảo mật &amp; Điều khoản sử dụng
-      </a>
+
     </div>
+
+    <!-- Bottom bar -->
+    <div class="footer-bottom">
+      <p>© 2026 DHDTCT LMS Education System</p>
+      <p>Toàn bộ nội dung trên website bao gồm video bài giảng, tài liệu học tập, đề luyện thi, hình ảnh, giao diện và hệ thống quản lý đều thuộc quyền sở hữu của chúng tôi và được pháp luật bảo hộ. Nghiêm cấm mọi hành vi sao chép, chỉnh sửa, phát tán, chia sẻ hoặc sử dụng dưới bất kỳ hình thức nào khi chưa có sự cho phép bằng văn bản từ chủ sở hữu. Mọi hành vi vi phạm bản quyền sẽ bị xử lý theo quy định của pháp luật hiện hành.</p>
+      <p>Phiên bản <b style="color:#6366f1">v1.3.0</b> • <span style="color:#6366f1">by.trcuong</span></p>
+    </div>
+
   </footer>
+
+  <!-- xoá style cũ -->
+  <style>
+    @media (max-width: 768px) { .legacy-footer-fix { display:none; } }
+  </style>
 
   <!-- MODAL HƯỚNG DẪN -->
   <div id="guideModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:999;overflow-y:auto;backdrop-filter:blur(4px)">
@@ -861,17 +983,20 @@
       const inInput = ['INPUT','TEXTAREA'].includes(e.target.tagName);
       const allowed = ['Tab','Enter','Backspace','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Delete'];
       if (allowed.includes(k)) return;
-      // Cho phép Ctrl+A, Ctrl+V trong input
-      if (ctrl && inInput && ['a','A','v','V'].includes(k)) return;
+      // Cho phép Ctrl+A, Ctrl+C, Ctrl+V trong input
+      if (ctrl && inInput && ['a','A','c','C','v','V','x','X'].includes(k)) return;
+      // Cho phép Ctrl+C, Ctrl+A ở ngoài (sao chép nội dung trang)
+      if (ctrl && ['c','C','a','A'].includes(k)) return;
+      // Chặn Ctrl+U (view source), Ctrl+S (save), Ctrl+P (print), Ctrl+Shift+I/J/C (devtools)
+      if (ctrl && ['u','U','s','S','p','P'].includes(k)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+      if (ctrl && e.shiftKey && ['i','I','j','J','c','C'].includes(k)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (ctrl) { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (e.altKey && k !== 'Alt') { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (/^F\d+$/.test(k)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (['PrintScreen','ScrollLock','Pause'].includes(k)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     }, true);
 
-    // Chặn copy/cut/drag
-    document.addEventListener('copy',      e => { e.preventDefault(); e.stopPropagation(); }, true);
-    document.addEventListener('cut',       e => { e.preventDefault(); e.stopPropagation(); }, true);
+    // Chặn drag (giữ nguyên), bỏ chặn copy/cut
     document.addEventListener('dragstart', e => { e.preventDefault(); e.stopPropagation(); }, true);
 
     // Chặn iframe embedding
@@ -917,12 +1042,6 @@
       });
     })();
   </script>
-  <footer style="text-align:center;padding:1.5rem 1rem;font-size:.76rem;color:#888;background:#0f172a;border-top:1px solid #1e293b;margin-top:0;line-height:1.9">
-    <p>© Bản quyền thuộc về <b>DHDTCT LMS Education System</b>. Toàn bộ nội dung trên website bao gồm video bài giảng, tài liệu học tập, đề luyện thi, hình ảnh, giao diện và hệ thống quản lý đều thuộc quyền sở hữu của chúng tôi và được pháp luật bảo hộ.</p>
-    <p>Nghiêm cấm mọi hành vi sao chép, chỉnh sửa, phát tán, chia sẻ hoặc sử dụng dưới bất kỳ hình thức nào khi chưa có sự cho phép bằng văn bản từ chủ sở hữu.</p>
-    <p>Mọi hành vi vi phạm bản quyền sẽ bị xử lý theo quy định của pháp luật hiện hành.</p>
-    <p style="margin-top:.5rem;color:#555;font-size:.72rem">Phiên bản <b style="color:#6366f1">v1.3.0</b> • <span style="color:#6366f1">by.trcuong</span></p>
-  </footer>
 
   <!-- THÔNG BÁO GIÁM SÁT -->
   <div id="monitorNotice" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:1rem;text-align:center;padding:2rem">
@@ -1065,8 +1184,8 @@
       to   { opacity:1; transform:translateY(0); }
     }
     @keyframes authSlideLeft {
-      from { opacity:0; transform:translateX(-30px); }
-      to   { opacity:1; transform:translateX(0); }
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
     }
     .auth-left > * { position:relative; z-index:1; }
     .auth-left .brand-anim  { animation: authSlideLeft .7s ease both; }
